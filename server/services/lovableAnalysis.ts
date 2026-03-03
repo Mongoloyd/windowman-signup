@@ -1,85 +1,96 @@
 /**
  * Lovable Analysis Authority — service module
  *
- * Calls POST {LOVABLE_ANALYSIS_URL}/wm/analyze-quote with a short-TTL
- * signed S3 URL and optional context fields.
+ * Calls POST {LOVABLE_WM_ANALYZE_URL} with a short-TTL signed S3 URL.
  *
  * Contract rules (non-negotiable):
- * - Preview fields ONLY come from envelope.preview — never derived from fullJson.
- * - The entire API response envelope is stored verbatim in analyses.lovable_envelope.
- * - analysis_version and trace_id are stored for debugging/replay.
- * - On any failure, throw LovableAnalysisError so the caller can set status='failed'.
+ * - Strict Zod parse (not safeParse) — fail-fast on schema mismatch.
+ * - Preview fields ONLY come from envelope.preview — never from envelope.full.
+ * - The entire validated envelope is stored verbatim in analyses.lovable_envelope.
+ * - meta.trace_id and meta.analysis_version go into their dedicated DB columns.
+ * - On schema mismatch: throw LovableAnalysisError("ANALYSIS_SCHEMA_MISMATCH").
+ * - On any failure: throw LovableAnalysisError so the caller sets status='failed'.
  */
 
 import { z } from "zod";
 import { ENV } from "../_core/env";
 import { storageGet } from "../storage";
 
-// ─── Zod schema for the Lovable API response envelope ────────────────────────
+// ─── Strict Zod schema (authoritative — from pasted_content_7 spec) ───────────
 
 /**
- * Pillar status values accepted from Lovable.
- * Stored verbatim — do not remap on our side.
+ * meta block — identifies the analysis run for cross-system debugging.
  */
-const PillarStatusSchema = z.enum(["pass", "warn", "flag"]);
+export const AnalysisMetaSchema = z.object({
+  trace_id: z.string().uuid(),
+  analysis_version: z.string().min(1),
+  model_used: z.string().min(1),
+  processing_time_ms: z.number(),
+  timestamp: z.string().min(1),
+});
 
 /**
- * Preview block — safe to show post-email, pre-phone-OTP.
- * Must NOT contain dollar amounts or contractor names.
+ * preview block — safe to show post-email, pre-phone-OTP.
+ * Must NOT contain dollar amounts, contractor names, or line items.
  */
-export const LovablePreviewSchema = z.object({
+export const AnalysisPreviewSchema = z.object({
   score: z.number().int().min(0).max(100),
-  grade: z.string().min(1).max(4),
-  /** 2-3 generic findings — no dollar amounts, no contractor names */
-  findings: z.array(z.string()).min(1).max(5),
-  /** Keyed by pillar slug, value is pass | warn | flag */
-  pillar_statuses: z.record(z.string(), PillarStatusSchema),
+  grade: z.string().min(1),
+  risk_level: z.enum(["critical", "high", "moderate", "acceptable"]),
+  headline: z.string().min(1),
+  warning_count: z.number().int(),
+  missing_item_count: z.number().int(),
 });
 
 /**
- * Full analysis block — NEVER sent to browser pre-phone-OTP.
- * Lovable owns this shape; we store it opaquely and return it verbatim.
+ * full block — NEVER sent to browser pre-phone-OTP.
+ * Stored verbatim; Lovable owns this shape.
  */
-export const LovableFullSchema = z.object({
-  score: z.number(),
-  grade: z.string(),
-  pillars: z.array(
-    z.object({
-      key: z.string(),
-      label: z.string(),
-      score: z.number(),
-      status: PillarStatusSchema,
-      detail: z.string(),
-    })
-  ),
-  overcharge_estimate: z
-    .object({
-      low: z.number(),
-      high: z.number(),
-      currency: z.string(),
-    })
-    .optional(),
-  recommendations: z.array(z.string()).optional(),
-  contractor_name: z.string().optional(),
-  line_items: z.array(z.unknown()).optional(),
-}).passthrough(); // allow Lovable to add fields without breaking us
-
-/**
- * Top-level response envelope from POST /wm/analyze-quote.
- */
-export const LovableEnvelopeSchema = z.object({
-  /** Lovable API version string, e.g. "wm-analysis-v1.2" */
-  analysis_version: z.string(),
-  /** Trace ID for cross-system debugging */
-  trace_id: z.string(),
-  /** Preview data — safe to expose pre-phone-OTP */
-  preview: LovablePreviewSchema,
-  /** Full analysis — hard-gated behind phone OTP on our side */
-  full: LovableFullSchema,
+export const AnalysisFullSchema = z.object({
+  dashboard: z.object({
+    overall_score: z.number(),
+    final_grade: z.string(),
+    safety_score: z.number(),
+    scope_score: z.number(),
+    price_score: z.number(),
+    fine_print_score: z.number(),
+    warranty_score: z.number(),
+    price_per_opening: z.string(),
+    warnings: z.array(z.string()),
+    missing_items: z.array(z.string()),
+    summary: z.string(),
+  }),
+  forensic: z.object({
+    headline: z.string(),
+    risk_level: z.enum(["critical", "high", "moderate", "acceptable"]),
+    statute_citations: z.array(z.string()),
+    questions_to_ask: z.array(z.string()),
+    positive_findings: z.array(z.string()),
+    hard_cap_applied: z.boolean(),
+    hard_cap_reason: z.string().nullable(),
+    hard_cap_statute: z.string().nullable(),
+  }),
+  extracted_identity: z.object({
+    contractor_name: z.string().nullable(),
+    license_number: z.string().nullable(),
+    noa_numbers: z.array(z.string()),
+  }),
 });
 
-export type LovableEnvelope = z.infer<typeof LovableEnvelopeSchema>;
-export type LovablePreview = z.infer<typeof LovablePreviewSchema>;
+/**
+ * Top-level envelope — the complete response from POST /wm/analyze-quote.
+ * Exported so Vitest can import and validate directly.
+ */
+export const AnalysisEnvelopeSchema = z.object({
+  meta: AnalysisMetaSchema,
+  preview: AnalysisPreviewSchema,
+  full: AnalysisFullSchema,
+});
+
+export type AnalysisEnvelope = z.infer<typeof AnalysisEnvelopeSchema>;
+export type AnalysisMeta = z.infer<typeof AnalysisMetaSchema>;
+export type AnalysisPreview = z.infer<typeof AnalysisPreviewSchema>;
+export type AnalysisFull = z.infer<typeof AnalysisFullSchema>;
 
 // ─── Custom error class ───────────────────────────────────────────────────────
 
@@ -92,6 +103,7 @@ export class LovableAnalysisError extends Error {
       | "NETWORK_ERROR"
       | "HTTP_ERROR"
       | "INVALID_RESPONSE"
+      | "ANALYSIS_SCHEMA_MISMATCH"
       | "TIMEOUT",
     public readonly httpStatus?: number,
     public readonly rawBody?: string
@@ -101,18 +113,18 @@ export class LovableAnalysisError extends Error {
   }
 }
 
-// ─── Request / response types ─────────────────────────────────────────────────
+// ─── Request type ─────────────────────────────────────────────────────────────
 
 export interface AnalyzeQuoteRequest {
   /** S3 key of the uploaded file — used to generate a short-TTL signed URL */
   s3Key: string;
   mimeType: string;
-  /** Optional context fields */
+  /** Trace ID generated by the caller before the DB record is created */
+  trace_id: string;
+  /** Optional context fields forwarded to Lovable */
   openingCount?: number;
   areaName?: string;
   notesFromCalculator?: string;
-  /** Trace ID we generate on our side for correlation */
-  trace_id: string;
 }
 
 // ─── Main service function ────────────────────────────────────────────────────
@@ -121,17 +133,17 @@ const TIMEOUT_MS = 60_000; // 60 seconds — analysis can take time
 
 export async function analyzeQuote(
   req: AnalyzeQuoteRequest
-): Promise<LovableEnvelope> {
+): Promise<AnalysisEnvelope> {
   const { lovableAnalysisUrl, lovableAnalysisSharedSecret } = ENV;
 
   if (!lovableAnalysisUrl || !lovableAnalysisSharedSecret) {
     throw new LovableAnalysisError(
-      "LOVABLE_ANALYSIS_URL or LOVABLE_ANALYSIS_SHARED_SECRET is not configured.",
+      "LOVABLE_WM_ANALYZE_URL or WM_ANALYZE_QUOTE_SECRET is not configured.",
       "CONFIG_MISSING"
     );
   }
 
-  // Generate a short-TTL signed URL for the S3 file
+  // Generate a short-TTL signed URL (5 minutes) so Lovable can read the file
   let fileUrl: string;
   try {
     const result = await storageGet(req.s3Key);
@@ -144,7 +156,7 @@ export async function analyzeQuote(
     );
   }
 
-  // Build the request payload
+  // Build request payload per spec
   const payload: Record<string, unknown> = {
     file_url: fileUrl,
     mime_type: req.mimeType,
@@ -154,11 +166,12 @@ export async function analyzeQuote(
   if (req.areaName) payload.area_name = req.areaName;
   if (req.notesFromCalculator) payload.notes_from_calculator = req.notesFromCalculator;
 
-  const endpoint = `${lovableAnalysisUrl.replace(/\/+$/, "")}/wm/analyze-quote`;
+  // The URL in ENV is the full endpoint per spec (LOVABLE_WM_ANALYZE_URL)
+  const endpoint = lovableAnalysisUrl.replace(/\/+$/, "");
 
-  // Call the Lovable API with timeout
   let rawBody: string;
   let httpStatus: number;
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -198,7 +211,7 @@ export async function analyzeQuote(
     );
   }
 
-  // Parse and validate the response envelope
+  // Parse JSON
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawBody);
@@ -211,18 +224,23 @@ export async function analyzeQuote(
     );
   }
 
-  const result = LovableEnvelopeSchema.safeParse(parsed);
-  if (!result.success) {
-    const issues = result.error.issues
-      .map((i) => `${i.path.join(".")}: ${i.message}`)
-      .join("; ");
+  // Strict parse — fail-fast on schema mismatch (spec: do NOT persist on failure)
+  let envelope: AnalysisEnvelope;
+  try {
+    envelope = AnalysisEnvelopeSchema.parse(parsed);
+  } catch (err: unknown) {
+    const issues =
+      err instanceof z.ZodError
+        ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+        : String(err);
+    console.error(`[Lovable] Schema mismatch (trace=${req.trace_id}): ${issues}`);
     throw new LovableAnalysisError(
-      `Lovable API response failed validation: ${issues}`,
-      "INVALID_RESPONSE",
+      `Lovable API response failed strict schema validation: ${issues}`,
+      "ANALYSIS_SCHEMA_MISMATCH",
       httpStatus!,
       rawBody
     );
   }
 
-  return result.data;
+  return envelope;
 }

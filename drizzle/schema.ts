@@ -112,6 +112,10 @@ export const analyses = mysqlTable("analyses", {
   previewGrade: varchar("preview_grade", { length: 4 }),
   /** 2-3 generic findings — no dollar amounts, no contractor names */
   previewFindings: json("preview_findings"),
+  /** Lovable preview.headline — one-line risk summary */
+  previewHeadline: varchar("preview_headline", { length: 512 }),
+  /** Lovable preview.risk_level: critical | high | moderate | acceptable */
+  previewRiskLevel: varchar("preview_risk_level", { length: 32 }),
   /** 5 pillar statuses: ok | warn | flag */
   pillarStatuses: json("pillar_statuses"),
   /** Lovable API version string (e.g. "wm-analysis-v1.2") for debugging */

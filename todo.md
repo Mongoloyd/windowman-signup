@@ -89,3 +89,11 @@
 - [x] Error state: mark analysis failed + surface clean TRPCError on Lovable call failure
 - [x] Store analysis_version and trace_id from Lovable response in DB
 - [x] Write 15 Vitest tests for Lovable service (all passing — 47 total passing)
+
+## Lovable Strict Schema Update (pasted_content_7 spec)
+- [x] Add preview_headline and preview_risk_level columns to analyses table
+- [x] Update Drizzle schema.ts with new columns
+- [x] Rewrite lovableAnalysis.ts with AnalysisEnvelopeSchema (meta/preview/full structure)
+- [x] Update storeAnalysisEnvelope DB helper for new field mapping
+- [x] Update analysis.upload: new field mapping + lead_events logging (requested/received/persisted/failed)
+- [x] Update Vitest tests for new schema shape

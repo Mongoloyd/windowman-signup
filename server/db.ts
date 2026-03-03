@@ -220,13 +220,21 @@ export async function unlockFullAnalysis(analysisId: string, fullJson: unknown):
 export async function storeAnalysisEnvelope(
   analysisId: string,
   opts: {
+    /** Entire validated API envelope stored verbatim */
     lovableEnvelope: unknown;
+    /** envelope.full block */
     fullJson: unknown;
+    /** From envelope.preview.score ONLY */
     previewScore: number;
+    /** From envelope.preview.grade ONLY */
     previewGrade: string;
-    previewFindings: unknown[];
-    pillarStatuses: Record<string, string>;
+    /** From envelope.preview.headline ONLY */
+    previewHeadline: string;
+    /** From envelope.preview.risk_level ONLY */
+    previewRiskLevel: string;
+    /** From envelope.meta.analysis_version */
     analysisVersion: string;
+    /** From envelope.meta.trace_id */
     traceId: string;
   }
 ): Promise<void> {
@@ -237,8 +245,8 @@ export async function storeAnalysisEnvelope(
     fullJson: opts.fullJson,
     previewScore: opts.previewScore,
     previewGrade: opts.previewGrade,
-    previewFindings: opts.previewFindings,
-    pillarStatuses: opts.pillarStatuses,
+    previewHeadline: opts.previewHeadline,
+    previewRiskLevel: opts.previewRiskLevel,
     analysisVersion: opts.analysisVersion,
     traceId: opts.traceId,
     status: "persisted_email_verified",

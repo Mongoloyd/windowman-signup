@@ -138,6 +138,16 @@ export const analysisRouter = router({
         status: "temp",
       });
 
+      // Log: wm_analysis_requested
+      await logLeadEvent({
+        id: randomUUID(),
+        leadId: analysisId,
+        eventName: "wm_analysis_requested",
+        eventId: `${analysisId}_wm_analysis_requested`,
+        source: "server",
+        payload: { analysisId, traceId, mimeType, fileName },
+      }).catch(() => {});
+
       // Call the Lovable Analysis Authority
       // Preview fields are set ONLY from envelope.preview — never derived from fullJson.
       let envelope;
@@ -151,38 +161,81 @@ export const analysisRouter = router({
         // Mark analysis as failed and surface a clean error to the client
         const errorCode =
           err instanceof LovableAnalysisError ? err.code : "UNKNOWN";
+        const failedEventName = `wm_analysis_failed_${errorCode.toLowerCase()}`;
         console.error(`[Analysis] Lovable API failed (trace=${traceId}):`, err);
         await markAnalysisFailed(analysisId, errorCode).catch(() => {});
+        await logLeadEvent({
+          id: randomUUID(),
+          leadId: analysisId,
+          eventName: failedEventName,
+          eventId: `${analysisId}_${failedEventName}`,
+          source: "server",
+          payload: { analysisId, traceId, errorCode },
+        }).catch(() => {});
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message:
             err instanceof LovableAnalysisError &&
             err.code === "CONFIG_MISSING"
               ? "Analysis service is not configured. Please contact support."
+              : err instanceof LovableAnalysisError &&
+                err.code === "ANALYSIS_SCHEMA_MISMATCH"
+              ? "Analysis returned an unexpected format. Please try again."
               : "Quote analysis failed. Please try again or upload a different file.",
         });
       }
 
+      // Log: wm_analysis_received (pre-lead — no leadId yet; use analysisId as FK)
+      // leadId is required by schema; use analysisId as a stable correlation key
+      await logLeadEvent({
+        id: randomUUID(),
+        leadId: analysisId,
+        eventName: "wm_analysis_received",
+        eventId: `${analysisId}_wm_analysis_received`,
+        source: "server",
+        payload: {
+          analysisId,
+          traceId: envelope.meta.trace_id,
+          analysisVersion: envelope.meta.analysis_version,
+          score: envelope.preview.score,
+          grade: envelope.preview.grade,
+        },
+      }).catch(() => {});
+
       // Store the full envelope + preview fields derived ONLY from envelope.preview
+      // meta.trace_id and meta.analysis_version go into dedicated columns
       await storeAnalysisEnvelope(analysisId, {
         lovableEnvelope: envelope,
         fullJson: envelope.full,
         previewScore: envelope.preview.score,
         previewGrade: envelope.preview.grade,
-        previewFindings: envelope.preview.findings,
-        pillarStatuses: envelope.preview.pillar_statuses,
-        analysisVersion: envelope.analysis_version,
-        traceId: envelope.trace_id,
+        previewHeadline: envelope.preview.headline,
+        previewRiskLevel: envelope.preview.risk_level,
+        analysisVersion: envelope.meta.analysis_version,
+        traceId: envelope.meta.trace_id,
       });
+
+      // Log: wm_analysis_persisted
+      await logLeadEvent({
+        id: randomUUID(),
+        leadId: analysisId,
+        eventName: "wm_analysis_persisted",
+        eventId: `${analysisId}_wm_analysis_persisted`,
+        source: "server",
+        payload: { analysisId, traceId: envelope.meta.trace_id },
+      }).catch(() => {});
 
       return {
         analysisId,
         tempSessionId,
         /** Partial preview data shown during scanning animation */
         scanSummary: {
-          pillarsChecked: Object.keys(envelope.preview.pillar_statuses).length,
           overallScore: envelope.preview.score,
           grade: envelope.preview.grade,
+          riskLevel: envelope.preview.risk_level,
+          headline: envelope.preview.headline,
+          warningCount: envelope.preview.warning_count,
+          missingItemCount: envelope.preview.missing_item_count,
         },
       };
     }),
