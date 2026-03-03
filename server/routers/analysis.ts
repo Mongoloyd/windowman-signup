@@ -38,6 +38,7 @@ import {
 import { sendMagicLinkEmail } from "../email";
 import { twilioClient } from "../twilio";
 import { analyzeQuote, LovableAnalysisError } from "../services/lovableAnalysis";
+import { notifyOwner } from "../_core/notification";
 import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
 
@@ -172,6 +173,31 @@ export const analysisRouter = router({
           source: "server",
           payload: { analysisId, traceId, errorCode },
         }).catch(() => {});
+        // Fire owner notification for schema mismatch — this means Lovable shipped
+        // a breaking schema change that requires immediate attention.
+        if (
+          err instanceof LovableAnalysisError &&
+          err.code === "ANALYSIS_SCHEMA_MISMATCH"
+        ) {
+          const rawExcerpt = err.rawBody
+            ? err.rawBody.slice(0, 400)
+            : "(no body)";
+          notifyOwner({
+            title: "[WindowMan] ANALYSIS_SCHEMA_MISMATCH — Lovable schema changed",
+            content: [
+              `**Trace ID:** ${traceId}`,
+              `**Analysis ID:** ${analysisId}`,
+              `**File:** ${fileName} (${mimeType})`,
+              `**Error:** ${err.message.slice(0, 600)}`,
+              `**Raw body excerpt:**\n\`\`\`\n${rawExcerpt}\n\`\`\``,
+              `**Action required:** The Lovable API response no longer matches AnalysisEnvelopeSchema.`,
+              `Review the raw body above, update the schema in server/services/lovableAnalysis.ts, and redeploy.`,
+            ].join("\n\n"),
+          }).catch((notifyErr) => {
+            console.error("[Analysis] Failed to send SCHEMA_MISMATCH owner notification:", notifyErr);
+          });
+        }
+
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message:

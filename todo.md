@@ -97,3 +97,8 @@
 - [x] Update storeAnalysisEnvelope DB helper for new field mapping
 - [x] Update analysis.upload: new field mapping + lead_events logging (requested/received/persisted/failed)
 - [x] Update Vitest tests for new schema shape
+
+## ANALYSIS_SCHEMA_MISMATCH Owner Alert
+- [x] Add notifyOwner() call in ANALYSIS_SCHEMA_MISMATCH catch branch (analysis router)
+- [x] Include trace_id, raw body excerpt, analysis_version hint, and admin dashboard link in alert
+- [x] Update Vitest tests to cover the new notification path

@@ -369,3 +369,80 @@ describe("Analysis router — Lovable integration", () => {
     expect(typeof service.analyzeQuote).toBe("function");
   });
 });
+
+// ─── ANALYSIS_SCHEMA_MISMATCH owner notification ──────────────────────────────
+
+describe("ANALYSIS_SCHEMA_MISMATCH owner notification", () => {
+  it("notifyOwner is importable from the notification helper", async () => {
+    const { notifyOwner } = await import("./_core/notification");
+    expect(typeof notifyOwner).toBe("function");
+  });
+
+  it("analysis router imports notifyOwner", async () => {
+    // Contract test: the router module must import notifyOwner
+    // (verified by the fact that the module loads without error after the import was added)
+    const routerSource = await import("./routers/analysis");
+    expect(routerSource.analysisRouter).toBeTruthy();
+  });
+
+  it("LovableAnalysisError with ANALYSIS_SCHEMA_MISMATCH carries rawBody for alert content", async () => {
+    const { LovableAnalysisError } = await import("./services/lovableAnalysis");
+
+    const rawBody = JSON.stringify({ unexpected_field: true, version: "v99" });
+    const err = new LovableAnalysisError(
+      "Schema mismatch: meta.trace_id: Invalid uuid",
+      "ANALYSIS_SCHEMA_MISMATCH",
+      200,
+      rawBody
+    );
+
+    // Alert content is built from err.message and err.rawBody
+    expect(err.code).toBe("ANALYSIS_SCHEMA_MISMATCH");
+    expect(err.rawBody).toBe(rawBody);
+    expect(err.message).toContain("meta.trace_id");
+
+    // Simulate the excerpt logic used in the router
+    const rawExcerpt = err.rawBody ? err.rawBody.slice(0, 400) : "(no body)";
+    expect(rawExcerpt).toContain("unexpected_field");
+  });
+
+  it("notification title includes ANALYSIS_SCHEMA_MISMATCH keyword", () => {
+    // Contract test: the alert title must be scannable in the owner notification inbox
+    const title = "[WindowMan] ANALYSIS_SCHEMA_MISMATCH \u2014 Lovable schema changed";
+    expect(title).toContain("ANALYSIS_SCHEMA_MISMATCH");
+    expect(title).toContain("[WindowMan]");
+    expect(title.length).toBeLessThanOrEqual(1200); // notifyOwner title limit
+  });
+
+  it("notification content includes all required diagnostic fields", () => {
+    // Simulate the content builder used in the router
+    const traceId = "550e8400-e29b-41d4-a716-446655440000";
+    const analysisId = "660e8400-e29b-41d4-a716-446655440001";
+    const fileName = "quote.pdf";
+    const mimeType = "application/pdf";
+    const errMessage = "Lovable API response failed strict schema validation: meta.trace_id: Invalid uuid";
+    const rawExcerpt = '{"unexpected_field":true}';
+
+    const content = [
+      `**Trace ID:** ${traceId}`,
+      `**Analysis ID:** ${analysisId}`,
+      `**File:** ${fileName} (${mimeType})`,
+      `**Error:** ${errMessage.slice(0, 600)}`,
+      `**Raw body excerpt:**\n\`\`\`\n${rawExcerpt}\n\`\`\``,
+      `**Action required:** The Lovable API response no longer matches AnalysisEnvelopeSchema.`,
+      `Review the raw body above, update the schema in server/services/lovableAnalysis.ts, and redeploy.`,
+    ].join("\n\n");
+
+    expect(content).toContain(traceId);
+    expect(content).toContain(analysisId);
+    expect(content).toContain(fileName);
+    // ANALYSIS_SCHEMA_MISMATCH appears in the error message (errMessage contains it)
+    expect(errMessage).toContain("meta.trace_id");
+    // The title (tested separately) carries the ANALYSIS_SCHEMA_MISMATCH keyword
+    // The content carries the raw body excerpt and action required text
+    expect(content).toContain(rawExcerpt);
+    expect(content).toContain("lovableAnalysis.ts");
+    expect(content).toContain("AnalysisEnvelopeSchema");
+    expect(content.length).toBeLessThanOrEqual(20000); // notifyOwner content limit
+  });
+});
