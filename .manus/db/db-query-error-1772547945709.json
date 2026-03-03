@@ -1,0 +1,8 @@
+{
+  "query": "\nALTER TABLE analyses\n  ADD COLUMN lovable_envelope JSON NULL AFTER full_json,\n  ADD COLUMN analysis_version VARCHAR(64) NULL AFTER pillar_statuses,\n  ADD COLUMN trace_id VARCHAR(128) NULL AFTER analysis_version;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 27uXEReyi2JBs58.ee1f7a6279f6 --database QkvsDE9FRrFndBys6dgpY4 --execute \nALTER TABLE analyses\n  ADD COLUMN lovable_envelope JSON NULL AFTER full_json,\n  ADD COLUMN analysis_version VARCHAR(64) NULL AFTER pillar_statuses,\n  ADD COLUMN trace_id VARCHAR(128) NULL AFTER analysis_version;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'analysis_version' in 'analyses'"
+  ]
+}

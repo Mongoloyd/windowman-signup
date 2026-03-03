@@ -213,6 +213,38 @@ export async function unlockFullAnalysis(analysisId: string, fullJson: unknown):
   }).where(eq(analyses.id, analysisId));
 }
 
+/**
+ * Store the complete Lovable API envelope and derived preview fields.
+ * Preview fields come ONLY from envelope.preview — never derived from fullJson.
+ */
+export async function storeAnalysisEnvelope(
+  analysisId: string,
+  opts: {
+    lovableEnvelope: unknown;
+    fullJson: unknown;
+    previewScore: number;
+    previewGrade: string;
+    previewFindings: unknown[];
+    pillarStatuses: Record<string, string>;
+    analysisVersion: string;
+    traceId: string;
+  }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(analyses).set({
+    lovableEnvelope: opts.lovableEnvelope,
+    fullJson: opts.fullJson,
+    previewScore: opts.previewScore,
+    previewGrade: opts.previewGrade,
+    previewFindings: opts.previewFindings,
+    pillarStatuses: opts.pillarStatuses,
+    analysisVersion: opts.analysisVersion,
+    traceId: opts.traceId,
+    status: "persisted_email_verified",
+  }).where(eq(analyses.id, analysisId));
+}
+
 export async function markAnalysisFailed(analysisId: string, errorCode: string): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

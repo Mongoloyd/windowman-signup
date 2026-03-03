@@ -78,3 +78,14 @@
 - [x] Register /verify-email route in server index
 - [x] Add /analysis/preview route to App.tsx router
 - [ ] Write Vitest tests for /verify-email route (deferred — integration test requires live DB)
+
+## Lovable Analysis Authority Integration (Option 1)
+- [x] Add LOVABLE_ANALYSIS_URL env var
+- [x] Add LOVABLE_ANALYSIS_SHARED_SECRET env var
+- [x] Add lovable_envelope, analysis_version, trace_id columns to analyses table (DB migration)
+- [x] Build server/services/lovableAnalysis.ts service module (Zod envelope schema, signed S3 URL, POST call, error handling)
+- [x] Add storeAnalysisEnvelope DB helper (preview fields from envelope.preview ONLY)
+- [x] Wire analyzeQuote into analysis.upload procedure (replace runStubAnalysis)
+- [x] Error state: mark analysis failed + surface clean TRPCError on Lovable call failure
+- [x] Store analysis_version and trace_id from Lovable response in DB
+- [x] Write 15 Vitest tests for Lovable service (all passing — 47 total passing)

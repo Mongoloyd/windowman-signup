@@ -24,6 +24,7 @@ import {
   setAnalysisPreviewFields,
   unlockFullAnalysis,
   markAnalysisFailed,
+  storeAnalysisEnvelope,
   createLead,
   getLeadByEmail,
   setLeadEmailVerified,
@@ -36,6 +37,7 @@ import {
 } from "../db";
 import { sendMagicLinkEmail } from "../email";
 import { twilioClient } from "../twilio";
+import { analyzeQuote, LovableAnalysisError } from "../services/lovableAnalysis";
 import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
 
@@ -63,51 +65,7 @@ function generateToken(bytes = 32): string {
   return randomBytes(bytes).toString("hex");
 }
 
-/**
- * Stub AI analysis — returns realistic preview + full data.
- * Replace with real AI call (Gemini/Claude) in Phase 3.
- */
-function runStubAnalysis(fileName: string) {
-  const pillars = [
-    { key: "safety_code", label: "Safety & Code Match", score: 92, status: "pass", detail: "Wind load specs verified. Miami-Dade NOA confirmed." },
-    { key: "install_scope", label: "Install & Scope Clarity", score: 78, status: "warn", detail: "Missing: Stucco repair line item. \"Subject to remeasure\" clause found." },
-    { key: "price_fairness", label: "Price Fairness", score: 85, status: "warn", detail: "Labor rate 12% above county median. Material markup within range." },
-    { key: "fine_print", label: "Fine Print Transparency", score: 82, status: "warn", detail: "Permit responsibility unclear. Change order terms favor contractor." },
-    { key: "warranty", label: "Warranty Value", score: 88, status: "pass", detail: "Manufacturer warranty: Lifetime. Labor warranty: 5 years." },
-  ];
-
-  const overallScore = Math.round(pillars.reduce((sum, p) => sum + p.score, 0) / pillars.length);
-  const grade = overallScore >= 90 ? "A" : overallScore >= 80 ? "B" : overallScore >= 70 ? "C" : "D";
-
-  const previewFindings = [
-    "Labor rate appears above county median — worth negotiating.",
-    "Permit responsibility clause is ambiguous — ask for clarification.",
-    "Warranty terms are competitive for this market.",
-  ];
-
-  const pillarStatuses: Record<string, string> = {};
-  pillars.forEach((p) => { pillarStatuses[p.key] = p.status; });
-
-  return {
-    overallScore,
-    grade,
-    previewFindings,
-    pillarStatuses,
-    fullJson: {
-      score: overallScore,
-      grade,
-      pillars,
-      fileName,
-      analyzedAt: new Date().toISOString(),
-      overchargeEstimate: { low: 8000, high: 15000, currency: "USD" },
-      recommendations: [
-        "Request itemized labor breakdown before signing.",
-        "Clarify who pulls the permit — contractor or homeowner.",
-        "Ask for a 2-year labor warranty extension.",
-      ],
-    },
-  };
-}
+// runStubAnalysis removed — replaced by Lovable Analysis Authority (analyzeQuote)
 
 export const analysisRouter = router({
   /**
@@ -167,11 +125,9 @@ export const analysisRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "File upload failed. Please try again." });
       }
 
-      // Run stub AI analysis
-      const analysis = runStubAnalysis(fileName);
-
-      // Create analysis record in DB
+      // Create the analysis stub record in DB (status=temp, no preview yet)
       const analysisId = randomUUID();
+      const traceId = randomUUID();
       await createAnalysis({
         id: analysisId,
         leadId: null,
@@ -180,11 +136,43 @@ export const analysisRouter = router({
         fileName,
         mimeType,
         status: "temp",
-        previewScore: analysis.overallScore,
-        previewGrade: analysis.grade,
-        previewFindings: analysis.previewFindings,
-        pillarStatuses: analysis.pillarStatuses,
-        fullJson: analysis.fullJson,
+      });
+
+      // Call the Lovable Analysis Authority
+      // Preview fields are set ONLY from envelope.preview — never derived from fullJson.
+      let envelope;
+      try {
+        envelope = await analyzeQuote({
+          s3Key,
+          mimeType,
+          trace_id: traceId,
+        });
+      } catch (err) {
+        // Mark analysis as failed and surface a clean error to the client
+        const errorCode =
+          err instanceof LovableAnalysisError ? err.code : "UNKNOWN";
+        console.error(`[Analysis] Lovable API failed (trace=${traceId}):`, err);
+        await markAnalysisFailed(analysisId, errorCode).catch(() => {});
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof LovableAnalysisError &&
+            err.code === "CONFIG_MISSING"
+              ? "Analysis service is not configured. Please contact support."
+              : "Quote analysis failed. Please try again or upload a different file.",
+        });
+      }
+
+      // Store the full envelope + preview fields derived ONLY from envelope.preview
+      await storeAnalysisEnvelope(analysisId, {
+        lovableEnvelope: envelope,
+        fullJson: envelope.full,
+        previewScore: envelope.preview.score,
+        previewGrade: envelope.preview.grade,
+        previewFindings: envelope.preview.findings,
+        pillarStatuses: envelope.preview.pillar_statuses,
+        analysisVersion: envelope.analysis_version,
+        traceId: envelope.trace_id,
       });
 
       return {
@@ -192,9 +180,9 @@ export const analysisRouter = router({
         tempSessionId,
         /** Partial preview data shown during scanning animation */
         scanSummary: {
-          pillarsChecked: 5,
-          overallScore: analysis.overallScore,
-          grade: analysis.grade,
+          pillarsChecked: Object.keys(envelope.preview.pillar_statuses).length,
+          overallScore: envelope.preview.score,
+          grade: envelope.preview.grade,
         },
       };
     }),
