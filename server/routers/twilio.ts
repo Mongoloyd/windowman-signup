@@ -3,7 +3,13 @@ import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc";
 import { notifyOwner } from "../_core/notification";
 import { sendSMS, validateCredentials, twilioClient } from "../twilio";
-import { createLead, verifyLead, blockLead, getAllLeads } from "../db";
+import {
+  createLead,
+  setLeadPhoneVerified,
+  getAllLeads,
+  logLeadEvent,
+} from "../db";
+import { randomUUID } from "crypto";
 
 // E.164 phone number regex
 const phoneSchema = z.string().regex(/^\+?[1-9]\d{7,14}$/, "Invalid phone number");
@@ -22,7 +28,8 @@ export const twilioRouter = router({
   /**
    * Step 1: Lookup v2 — check if the phone number is a mobile line.
    * Blocks VOIP and landlines before wasting a Verify credit.
-   * Also creates the lead in DB with status 'unverified'.
+   * Creates the lead in DB immediately with email = placeholder (legacy flow).
+   * NOTE: This is the legacy flow (phone-only). New flow uses analysis.lookupPhone.
    */
   lookupAndCreateLead: publicProcedure
     .input(
@@ -30,7 +37,7 @@ export const twilioRouter = router({
         name: z.string().min(1).max(100),
         phone: phoneSchema,
         source: z.enum(["flow_a", "flow_b", "callback"]).default("flow_b"),
-        answers: z.record(z.string(), z.string()).optional(),
+        answers: z.record(z.string(), z.unknown()).optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -52,11 +59,9 @@ export const twilioRouter = router({
         const lookup = await twilioClient.lookups.v2
           .phoneNumbers(e164Phone)
           .fetch({ fields: "line_type_intelligence" });
-
         lineType = (lookup as any).lineTypeIntelligence?.type ?? null;
       } catch (err) {
         console.warn("[Twilio Lookup] Failed to lookup phone:", err);
-        // If lookup fails, allow through (don't block on lookup errors)
       }
 
       // Block VOIP and landlines
@@ -70,13 +75,16 @@ export const twilioRouter = router({
         });
       }
 
-      // Create lead in DB immediately with 'unverified' status (Option B — partial lead)
-      const leadId = await createLead({
-        name,
-        phone: e164Phone,
+      // Create lead in DB with placeholder email (legacy phone-only flow)
+      const leadId = randomUUID();
+      await createLead({
+        id: leadId,
+        email: `phone_only_${leadId}@windowman.internal`,
+        emailVerified: false,
+        phoneE164: e164Phone,
+        phoneVerified: false,
         lineType: lineType ?? "unknown",
-        source,
-        answers: answers ?? null,
+        qualificationAnswers: answers ?? null,
       });
 
       return { leadId, phone: e164Phone, lineType };
@@ -84,7 +92,6 @@ export const twilioRouter = router({
 
   /**
    * Step 2: Send OTP via Twilio Verify.
-   * Called after Lookup passes. Can also be called again for Resend.
    */
   sendOTP: publicProcedure
     .input(z.object({ phone: phoneSchema }))
@@ -97,7 +104,6 @@ export const twilioRouter = router({
         await twilioClient.verify.v2
           .services(VERIFY_SERVICE_SID)
           .verifications.create({ to: input.phone, channel: "sms" });
-
         return { success: true };
       } catch (err: any) {
         console.error("[Twilio Verify] sendOTP error:", err);
@@ -110,17 +116,16 @@ export const twilioRouter = router({
 
   /**
    * Step 3: Verify the OTP code.
-   * On success: flip lead status to 'verified', send team SMS + owner notification.
-   * On failure: return error without changing DB.
+   * On success: flip lead to phone_verified, send team SMS + owner notification.
    */
   verifyOTP: publicProcedure
     .input(
       z.object({
-        leadId: z.number().int().positive(),
+        leadId: z.string().uuid(),
         phone: phoneSchema,
         code: z.string().length(6).regex(/^\d{6}$/, "Code must be 6 digits"),
         name: z.string().min(1).max(100),
-        answers: z.record(z.string(), z.string()).optional(),
+        answers: z.record(z.string(), z.unknown()).optional(),
         source: z.enum(["flow_a", "flow_b", "callback"]).default("flow_b"),
       })
     )
@@ -153,8 +158,18 @@ export const twilioRouter = router({
         });
       }
 
-      // Flip lead to verified in DB
-      await verifyLead(leadId);
+      // Flip lead to phone_verified
+      await setLeadPhoneVerified(leadId, phone, null);
+
+      // Log event
+      await logLeadEvent({
+        id: randomUUID(),
+        leadId,
+        eventName: "wm_phone_verified",
+        eventId: `${leadId}_wm_phone_verified`,
+        source: "server",
+        payload: { source, name },
+      }).catch(() => {});
 
       // Build team notification SMS
       const flowLabel =
@@ -176,13 +191,12 @@ export const twilioRouter = router({
         .filter(Boolean)
         .join("\n");
 
-      // Send team notification SMS (only now that OTP is verified)
+      // Send team notification SMS
       try {
         const teamPhone = process.env.TWILIO_TEAM_PHONE ?? process.env.TWILIO_PHONE_NUMBER ?? "";
         if (teamPhone) await sendSMS(teamPhone, smsBody);
       } catch (err) {
         console.error("[Twilio] Team SMS failed after verification:", err);
-        // Don't throw — lead is verified in DB even if SMS fails
       }
 
       // Send confirmation SMS to homeowner
@@ -200,10 +214,7 @@ export const twilioRouter = router({
       }
 
       // Notify owner via Manus notification
-      await notifyOwner({
-        title: `✅ Verified Lead: ${name}`,
-        content: smsBody,
-      }).catch(() => {});
+      await notifyOwner({ title: `✅ Verified Lead: ${name}`, content: smsBody }).catch(() => {});
 
       return { success: true, status: "verified" };
     }),

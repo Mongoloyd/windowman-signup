@@ -71,7 +71,7 @@ export function QualificationCard() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [leadId, setLeadId] = useState<number | null>(null);
+  const [leadId, setLeadId] = useState<string | null>(null);
   const [e164Phone, setE164Phone] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 

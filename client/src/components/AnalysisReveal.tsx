@@ -72,7 +72,7 @@ function CallbackModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<ModalStep>("form");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [leadId, setLeadId] = useState<number | null>(null);
+  const [leadId, setLeadId] = useState<string | null>(null);
   const [e164Phone, setE164Phone] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
