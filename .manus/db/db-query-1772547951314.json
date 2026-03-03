@@ -1,9 +1,0 @@
-{
-  "query": "\nALTER TABLE analyses ADD COLUMN lovable_envelope JSON NULL;\nALTER TABLE analyses ADD COLUMN analysis_version VARCHAR(64) NULL;\nALTER TABLE analyses ADD COLUMN trace_id VARCHAR(128) NULL;\n",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 27uXEReyi2JBs58.ee1f7a6279f6 --database QkvsDE9FRrFndBys6dgpY4 --execute \nALTER TABLE analyses ADD COLUMN lovable_envelope JSON NULL;\nALTER TABLE analyses ADD COLUMN analysis_version VARCHAR(64) NULL;\nALTER TABLE analyses ADD COLUMN trace_id VARCHAR(128) NULL;\n",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1028
-}

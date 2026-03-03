@@ -105,23 +105,13 @@ export const analyses = mysqlTable("analyses", {
   errorCode: varchar("error_code", { length: 64 }),
   /** Full AI analysis JSON — NEVER sent to browser pre-phone-OTP */
   fullJson: json("full_json"),
-  /** Complete Lovable API response envelope (stored verbatim for audit/replay) */
-  lovableEnvelope: json("lovable_envelope"),
   /** Preview fields — safe to show post-email, pre-phone */
   previewScore: int("preview_score"),
   previewGrade: varchar("preview_grade", { length: 4 }),
   /** 2-3 generic findings — no dollar amounts, no contractor names */
   previewFindings: json("preview_findings"),
-  /** Lovable preview.headline — one-line risk summary */
-  previewHeadline: varchar("preview_headline", { length: 512 }),
-  /** Lovable preview.risk_level: critical | high | moderate | acceptable */
-  previewRiskLevel: varchar("preview_risk_level", { length: 32 }),
   /** 5 pillar statuses: ok | warn | flag */
   pillarStatuses: json("pillar_statuses"),
-  /** Lovable API version string (e.g. "wm-analysis-v1.2") for debugging */
-  analysisVersion: varchar("analysis_version", { length: 64 }),
-  /** Trace ID from Lovable API response for cross-system debugging */
-  traceId: varchar("trace_id", { length: 128 }),
   /** Facebook dedup flag for SubmitApplication event */
   fbSubmitApplicationSent: boolean("fb_submit_application_sent").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
