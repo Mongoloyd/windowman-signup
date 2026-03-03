@@ -244,12 +244,23 @@ export default function AnalysisPreview() {
       setPageState("no_analysis");
       return;
     }
+    // Guard: no analysisId in URL — show a clear error instead of spinning forever
+    if (!analysisId) {
+      setErrorMessage("No analysis ID found. Please use the link from your verification email, or upload a quote from the home page.");
+      setPageState("error");
+      return;
+    }
     if (previewLoading) {
       setPageState("loading");
       return;
     }
     if (previewError) {
-      setErrorMessage(previewError.message || "Analysis not found.");
+      // UNAUTHORIZED means the email session cookie is missing or expired
+      if (previewError.data?.code === "UNAUTHORIZED") {
+        setErrorMessage("Your verification session has expired. Please re-upload your quote and verify your email again.");
+      } else {
+        setErrorMessage(previewError.message || "Analysis not found.");
+      }
       setPageState("error");
       return;
     }
@@ -260,8 +271,14 @@ export default function AnalysisPreview() {
       } else {
         setPageState("preview");
       }
+      return;
     }
-  }, [previewData, previewLoading, previewError, noAnalysis]);
+    // Query is done (not loading, no error, no data) — analysis not found
+    if (!previewLoading && !previewError && !previewData) {
+      setErrorMessage("Analysis not found or has expired. Please upload your quote again.");
+      setPageState("error");
+    }
+  }, [previewData, previewLoading, previewError, noAnalysis, analysisId]);
 
   // ── tRPC mutations ──────────────────────────────────────────────────────────
 
