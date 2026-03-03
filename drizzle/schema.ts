@@ -1,17 +1,10 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
  */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +18,30 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Leads table — captures every homeowner submission.
+ * Status lifecycle: unverified → verified (or stays unverified as a partial lead).
+ * The team SMS notification is only sent when status flips to 'verified'.
+ */
+export const leads = mysqlTable("leads", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Homeowner's name from the qualification form */
+  name: varchar("name", { length: 100 }).notNull(),
+  /** E.164 phone number e.g. +15617827090 */
+  phone: varchar("phone", { length: 20 }).notNull(),
+  /** Twilio Lookup v2 line type: mobile, voip, landline, etc. */
+  lineType: varchar("lineType", { length: 32 }),
+  /** Verification status — unverified until OTP is approved */
+  status: mysqlEnum("status", ["unverified", "verified", "blocked"]).default("unverified").notNull(),
+  /** Source flow: flow_a (quote uploaded), flow_b (no quote), callback */
+  source: mysqlEnum("source", ["flow_a", "flow_b", "callback"]).default("flow_b").notNull(),
+  /** Qualification answers stored as JSON */
+  answers: json("answers"),
+  /** Timestamp when OTP was verified */
+  verifiedAt: timestamp("verifiedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof leads.$inferInsert;

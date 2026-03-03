@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, leads, InsertLead, Lead } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,52 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Lead helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Create a new lead with status 'unverified'.
+ * Called immediately when the user clicks "Connect Me" — before OTP.
+ */
+export async function createLead(data: InsertLead): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(leads).values({ ...data, status: "unverified" });
+  return (result as any)[0].insertId as number;
+}
+
+/**
+ * Flip a lead's status to 'verified' and record the timestamp.
+ */
+export async function verifyLead(leadId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(leads).set({ status: "verified", verifiedAt: new Date() }).where(eq(leads.id, leadId));
+}
+
+/**
+ * Mark a lead as 'blocked' (VOIP/landline detected by Lookup v2).
+ */
+export async function blockLead(leadId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(leads).set({ status: "blocked" }).where(eq(leads.id, leadId));
+}
+
+/**
+ * Fetch a lead by ID.
+ */
+export async function getLeadById(leadId: number): Promise<Lead | undefined> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.select().from(leads).where(eq(leads.id, leadId)).limit(1);
+  return result[0];
+}
+
+/**
+ * Fetch all leads ordered by newest first (for admin dashboard).
+ */
+export async function getAllLeads(): Promise<Lead[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(leads).orderBy(leads.createdAt);
+}

@@ -2,10 +2,13 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc";
 import { notifyOwner } from "../_core/notification";
-import { sendSMS, validateCredentials } from "../twilio";
+import { sendSMS, validateCredentials, twilioClient } from "../twilio";
+import { createLead, verifyLead, blockLead, getAllLeads } from "../db";
 
 // E.164 phone number regex
 const phoneSchema = z.string().regex(/^\+?[1-9]\d{7,14}$/, "Invalid phone number");
+
+const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID ?? "";
 
 export const twilioRouter = router({
   /**
@@ -17,101 +20,198 @@ export const twilioRouter = router({
   }),
 
   /**
-   * Send an SMS lead notification to the WindowMan team when a user submits
-   * the qualification form (Flow B) or requests a callback.
+   * Step 1: Lookup v2 — check if the phone number is a mobile line.
+   * Blocks VOIP and landlines before wasting a Verify credit.
+   * Also creates the lead in DB with status 'unverified'.
    */
-  sendLeadSMS: publicProcedure
+  lookupAndCreateLead: publicProcedure
     .input(
       z.object({
         name: z.string().min(1).max(100),
         phone: phoneSchema,
-        county: z.string().optional(),
-        timeline: z.string().optional(),
-        windowCount: z.string().optional(),
-        hasEstimate: z.boolean().optional(),
         source: z.enum(["flow_a", "flow_b", "callback"]).default("flow_b"),
+        answers: z.record(z.string(), z.string()).optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { name, phone, county, timeline, windowCount, hasEstimate, source } = input;
+      const { name, phone, source, answers } = input;
 
-      // Build the SMS body for the WindowMan team notification
-      const flowLabel =
-        source === "flow_a"
-          ? "Quote Analysis Complete"
-          : source === "flow_b"
-          ? "Lead Qualification Form"
-          : "Callback Request";
+      if (!twilioClient) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Twilio not configured." });
+      }
 
-      const smsBody = [
-        `🏠 NEW WINDOWMAN LEAD — ${flowLabel}`,
-        `Name: ${name}`,
-        `Phone: ${phone}`,
-        county ? `County: ${county}` : null,
-        timeline ? `Timeline: ${timeline}` : null,
-        windowCount ? `Windows: ${windowCount}` : null,
-        hasEstimate !== undefined ? `Has Estimate: ${hasEstimate ? "Yes" : "No"}` : null,
-        `Source: /signup`,
-      ]
-        .filter(Boolean)
-        .join("\n");
+      // Normalize to E.164
+      const normalizedPhone = phone.replace(/\D/g, "");
+      const e164Phone = normalizedPhone.startsWith("1")
+        ? `+${normalizedPhone}`
+        : `+1${normalizedPhone}`;
+
+      // Twilio Lookup v2 — check line type
+      let lineType: string | null = null;
+      try {
+        const lookup = await twilioClient.lookups.v2
+          .phoneNumbers(e164Phone)
+          .fetch({ fields: "line_type_intelligence" });
+
+        lineType = (lookup as any).lineTypeIntelligence?.type ?? null;
+      } catch (err) {
+        console.warn("[Twilio Lookup] Failed to lookup phone:", err);
+        // If lookup fails, allow through (don't block on lookup errors)
+      }
+
+      // Block VOIP and landlines
+      if (lineType === "voip" || lineType === "landline") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            lineType === "voip"
+              ? "This appears to be a VOIP number (e.g. Google Voice). Please enter your mobile number to receive the verification code."
+              : "Landline numbers can't receive SMS. Please enter a mobile number.",
+        });
+      }
+
+      // Create lead in DB immediately with 'unverified' status (Option B — partial lead)
+      const leadId = await createLead({
+        name,
+        phone: e164Phone,
+        lineType: lineType ?? "unknown",
+        source,
+        answers: answers ?? null,
+      });
+
+      return { leadId, phone: e164Phone, lineType };
+    }),
+
+  /**
+   * Step 2: Send OTP via Twilio Verify.
+   * Called after Lookup passes. Can also be called again for Resend.
+   */
+  sendOTP: publicProcedure
+    .input(z.object({ phone: phoneSchema }))
+    .mutation(async ({ input }) => {
+      if (!twilioClient || !VERIFY_SERVICE_SID) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Verify service not configured." });
+      }
 
       try {
-        // Send SMS to the WindowMan team phone (the Twilio number itself as a demo;
-        // in production, replace TWILIO_FROM with the team's actual number)
-        const teamPhone = process.env.TWILIO_TEAM_PHONE ?? process.env.TWILIO_PHONE_NUMBER ?? "";
-        if (!teamPhone) throw new Error("No team phone number configured");
+        await twilioClient.verify.v2
+          .services(VERIFY_SERVICE_SID)
+          .verifications.create({ to: input.phone, channel: "sms" });
 
-        const sid = await sendSMS(teamPhone, smsBody);
-
-        // Also notify via Manus notification system
-        await notifyOwner({
-          title: `New WindowMan Lead: ${name}`,
-          content: smsBody,
-        });
-
-        return { success: true, sid };
-      } catch (err) {
-        console.error("[Twilio] sendLeadSMS error:", err);
+        return { success: true };
+      } catch (err: any) {
+        console.error("[Twilio Verify] sendOTP error:", err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to send lead notification. Please try again.",
+          message: "Failed to send verification code. Please try again.",
         });
       }
     }),
 
   /**
-   * Send a confirmation SMS to the homeowner after they submit their info.
+   * Step 3: Verify the OTP code.
+   * On success: flip lead status to 'verified', send team SMS + owner notification.
+   * On failure: return error without changing DB.
    */
-  sendConfirmationSMS: publicProcedure
+  verifyOTP: publicProcedure
     .input(
       z.object({
+        leadId: z.number().int().positive(),
         phone: phoneSchema,
+        code: z.string().length(6).regex(/^\d{6}$/, "Code must be 6 digits"),
         name: z.string().min(1).max(100),
+        answers: z.record(z.string(), z.string()).optional(),
+        source: z.enum(["flow_a", "flow_b", "callback"]).default("flow_b"),
       })
     )
     .mutation(async ({ input }) => {
-      const { phone, name } = input;
+      const { leadId, phone, code, name, answers, source } = input;
 
-      const confirmationBody = [
-        `Hi ${name}! 👋 This is WindowMan.`,
-        ``,
-        `We've received your request and a certified window expert will contact you shortly.`,
-        ``,
-        `In the meantime, you can scan your contractor quote at: windowman-signup-qkvsde9f.manus.space`,
-        ``,
-        `Reply STOP to opt out.`,
-      ].join("\n");
+      if (!twilioClient || !VERIFY_SERVICE_SID) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Verify service not configured." });
+      }
 
+      // Check the OTP code with Twilio
+      let verificationStatus: string;
       try {
-        const sid = await sendSMS(phone, confirmationBody);
-        return { success: true, sid };
-      } catch (err) {
-        console.error("[Twilio] sendConfirmationSMS error:", err);
+        const check = await twilioClient.verify.v2
+          .services(VERIFY_SERVICE_SID)
+          .verificationChecks.create({ to: phone, code });
+        verificationStatus = check.status;
+      } catch (err: any) {
+        console.error("[Twilio Verify] verifyOTP error:", err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to send confirmation SMS.",
+          message: "Verification check failed. Please try again.",
         });
       }
+
+      if (verificationStatus !== "approved") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Incorrect code. Please check the SMS and try again.",
+        });
+      }
+
+      // Flip lead to verified in DB
+      await verifyLead(leadId);
+
+      // Build team notification SMS
+      const flowLabel =
+        source === "flow_a" ? "Quote Analysis" : source === "flow_b" ? "Qualification Form" : "Callback";
+
+      const answerLines = answers
+        ? Object.entries(answers)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join("\n")
+        : "";
+
+      const smsBody = [
+        `✅ NEW VERIFIED WINDOWMAN LEAD — ${flowLabel}`,
+        `Name: ${name}`,
+        `Phone: ${phone}`,
+        answerLines,
+        `Source: /signup`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      // Send team notification SMS (only now that OTP is verified)
+      try {
+        const teamPhone = process.env.TWILIO_TEAM_PHONE ?? process.env.TWILIO_PHONE_NUMBER ?? "";
+        if (teamPhone) await sendSMS(teamPhone, smsBody);
+      } catch (err) {
+        console.error("[Twilio] Team SMS failed after verification:", err);
+        // Don't throw — lead is verified in DB even if SMS fails
+      }
+
+      // Send confirmation SMS to homeowner
+      try {
+        const confirmationBody = [
+          `Hi ${name}! 👋 This is WindowMan.`,
+          ``,
+          `Your phone is verified. A certified window expert will contact you shortly.`,
+          ``,
+          `Reply STOP to opt out.`,
+        ].join("\n");
+        await sendSMS(phone, confirmationBody);
+      } catch (err) {
+        console.error("[Twilio] Confirmation SMS failed:", err);
+      }
+
+      // Notify owner via Manus notification
+      await notifyOwner({
+        title: `✅ Verified Lead: ${name}`,
+        content: smsBody,
+      }).catch(() => {});
+
+      return { success: true, status: "verified" };
     }),
+
+  /**
+   * Get all leads (admin use).
+   */
+  getLeads: publicProcedure.query(async () => {
+    return getAllLeads();
+  }),
 });
