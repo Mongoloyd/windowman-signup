@@ -71,3 +71,10 @@
 - [ ] Add server-side OTP rate limiting (max 5 attempts per phone per 10 min)
 - [ ] Wire up phonecall.bot webhook endpoint (/api/webhooks/phonecall-bot)
 - [ ] Add Facebook Pixel event firing (wm_email_verified $100, wm_phone_verified, wm_full_analysis_viewed $500)
+
+## /verify-email Route & Preview Page
+- [x] Build GET /verify-email Express route (token hash, consume, set email-auth cookie, redirect)
+- [x] Build /analysis/preview frontend page (email-auth session gated, partial preview UI)
+- [x] Register /verify-email route in server index
+- [x] Add /analysis/preview route to App.tsx router
+- [ ] Write Vitest tests for /verify-email route (deferred — integration test requires live DB)
