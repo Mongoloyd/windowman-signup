@@ -1,7 +1,10 @@
 import { ASSETS } from "@/lib/assets";
 import { useInView } from "@/hooks/useInView";
 import { useCountUp } from "@/hooks/useCountUp";
-import { Shield, FileSearch, Scale, FileText, Award, CheckCircle2, AlertTriangle, Phone } from "lucide-react";
+import { Shield, FileSearch, Scale, FileText, Award, CheckCircle2, AlertTriangle, Phone, Loader2, CheckCircle } from "lucide-react";
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 const pillars = [
   { icon: Shield, label: "Safety & Code Match", score: 92, status: "pass", detail: "Wind load specs verified. Miami-Dade NOA confirmed." },
@@ -39,8 +42,81 @@ function ScoreRing({ score, isInView }: { score: number; isInView: boolean }) {
   );
 }
 
+function CallbackModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const sendLeadSMS = trpc.twilio.sendLeadSMS.useMutation({
+    onSuccess: () => setSubmitted(true),
+    onError: (err) => toast.error(err.message || "Failed to send. Please try again."),
+  });
+  const sendConfirmationSMS = trpc.twilio.sendConfirmationSMS.useMutation();
+
+  const handleSubmit = () => {
+    if (!name.trim() || phone.trim().length < 10) return;
+    const normalizedPhone = phone.replace(/\D/g, "");
+    const e164Phone = normalizedPhone.startsWith("1") ? `+${normalizedPhone}` : `+1${normalizedPhone}`;
+    sendLeadSMS.mutate({ name: name.trim(), phone: e164Phone, source: "flow_a" });
+    sendConfirmationSMS.mutate({ phone: e164Phone, name: name.trim() });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}>
+      <div className="glass-card rounded-2xl p-8 w-full max-w-md glow-cyan">
+        {submitted ? (
+          <div className="text-center py-4">
+            <CheckCircle className="w-14 h-14 text-[#10B981] mx-auto mb-4" />
+            <h3 className="font-[var(--font-display)] text-xl font-bold text-white mb-2">Expert on the Way!</h3>
+            <p className="text-[#94A3B8] text-sm mb-6">A WindowMan expert will call you shortly at <span className="text-white">{phone}</span>.</p>
+            <button onClick={onClose} className="px-6 py-2.5 rounded-lg bg-[rgba(0,217,255,0.1)] border border-[rgba(0,217,255,0.3)] text-[#00D9FF] text-sm font-[var(--font-display)] font-semibold">
+              Close
+            </button>
+          </div>
+        ) : (
+          <>
+            <h3 className="font-[var(--font-display)] text-xl font-bold text-white mb-2">Request a Callback</h3>
+            <p className="text-[#94A3B8] text-sm mb-6">A certified window expert will review your grade and call you within minutes.</p>
+            <div className="space-y-4 mb-6">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your Name"
+                className="w-full px-4 py-3 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[rgba(0,217,255,0.2)] text-white placeholder-[#475569] text-sm focus:outline-none focus:border-[#00D9FF] transition-colors"
+              />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="(561) 000-0000"
+                className="w-full px-4 py-3 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[rgba(0,217,255,0.2)] text-white placeholder-[#475569] text-sm focus:outline-none focus:border-[#00D9FF] transition-colors"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleSubmit}
+                disabled={!name.trim() || phone.trim().length < 10 || sendLeadSMS.isPending}
+                className="flex-1 py-3 rounded-lg font-[var(--font-display)] font-bold text-[#0F1419] transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ background: "#00D9FF", boxShadow: "0 0 20px rgba(0,217,255,0.3)" }}
+              >
+                {sendLeadSMS.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
+                {sendLeadSMS.isPending ? "Sending..." : "Call Me Now"}
+              </button>
+              <button onClick={onClose} className="px-4 py-3 rounded-lg border border-[rgba(255,255,255,0.1)] text-[#64748B] text-sm hover:text-white transition-colors">
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AnalysisReveal() {
   const { ref, isInView } = useInView(0.1);
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
 
   return (
     <section ref={ref} className="relative py-24 overflow-hidden">
@@ -154,6 +230,7 @@ export function AnalysisReveal() {
         {/* CTA */}
         <div className={`text-center transition-all duration-700 delay-1000 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           <button
+            onClick={() => setShowCallbackModal(true)}
             className="inline-flex items-center gap-3 px-10 py-4 rounded-xl font-[var(--font-display)] font-bold text-lg text-[#0F1419] transition-all duration-300 hover:scale-105"
             style={{
               background: "#00D9FF",
@@ -168,6 +245,9 @@ export function AnalysisReveal() {
           </p>
         </div>
       </div>
+
+      {/* Callback Modal */}
+      {showCallbackModal && <CallbackModal onClose={() => setShowCallbackModal(false)} />}
     </section>
   );
 }
