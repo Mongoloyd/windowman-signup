@@ -54,7 +54,7 @@ export function detectPromptInjection(ocrText: string): PromptInjectionDetection
 
     // formatting attempts (json fences / markdown / "return A+")
     { sig: "format_override", weight: 15, re: /```|<\s*script\b|<\/\s*script\s*>/gi },
-    { sig: "grade_manipulation", weight: 25, re: /\b(give|return)\b.*\b(a\+|100\/100|perfect|pass)\b/gi },
+    { sig: "grade_manipulation", weight: 25, re: /\b(give|return)\b.*\b(a\+|100\/100|perfect|pass)(?=\W|$)/gi },
     { sig: "grade_manipulation", weight: 15, re: /\b5-?star\b|\btrusted\b|\bverified\b.*\bcontractor\b/gi },
 
     // obfuscation markers (base64-ish blobs, unicode confusables mention)
@@ -110,9 +110,7 @@ export function buildGeminiInputText(
     header,
     "",
     "OCR_TEXT_UNTRUSTED_EVIDENCE:",
-    '"""',
     ocrText ?? "",
-    '"""',
   ].join("\n");
 }
 
