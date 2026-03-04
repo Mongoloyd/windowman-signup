@@ -66,6 +66,10 @@ export const leads = mysqlTable("leads", {
   qualificationAnswers: json("qualification_answers"),
   /** Timestamp when qualification was completed */
   qualificationCompletedAt: timestamp("qualification_completed_at"),
+  /** Timestamp when email was verified via magic link */
+  emailVerifiedAt: timestamp("email_verified_at"),
+  /** Timestamp when phone was verified via Twilio OTP */
+  phoneVerifiedAt: timestamp("phone_verified_at"),
   /** Facebook deduplication flags — prevent double-firing events */
   fbLeadSent: boolean("fb_lead_sent").default(false).notNull(),
   fbCompleteRegistrationSent: boolean("fb_complete_registration_sent").default(false).notNull(),
@@ -87,31 +91,47 @@ export const analyses = mysqlTable("analyses", {
   leadId: char("lead_id", { length: 36 }),
   /** Temp session ID used pre-email verification (browser fingerprint) */
   tempSessionId: varchar("temp_session_id", { length: 64 }),
+  /** S3 storage key for uploaded binary (temp/ prefix before email verify) */
+  fileKey: varchar("file_key", { length: 512 }),
   /** S3 file URL — temp/ prefix before email verify, vault/ after */
-  fileUrl: text("file_url").notNull(),
+  fileUrl: text("file_url"),
+  /** SHA-256 hex hash of the uploaded file bytes — used for dedup */
+  fileHash: varchar("file_hash", { length: 64 }),
   /** Original filename for display */
   fileName: varchar("file_name", { length: 255 }),
   /** File MIME type */
   mimeType: varchar("mime_type", { length: 64 }),
   /** Lifecycle status */
   status: mysqlEnum("status", [
+    "processing",
     "temp",
     "persisted_email_verified",
     "full_unlocked",
     "failed",
     "purged",
-  ]).default("temp").notNull(),
+  ]).default("processing").notNull(),
   /** Error code if status = failed */
   errorCode: varchar("error_code", { length: 64 }),
+  /** S3 key for extracted OCR text */
+  ocrTextKey: varchar("ocr_text_key", { length: 512 }),
+  /** S3 URL for extracted OCR text */
+  ocrTextUrl: text("ocr_text_url"),
+  /** OCR metadata: { page_count, confidence_score, mime } */
+  ocrMeta: json("ocr_meta"),
+  /** Proof-of-Read: contractor_name, license, city, zip, total_price, etc. */
+  proofOfRead: json("proof_of_read"),
+  /** Preview JSON — safe to show post-email, pre-phone (SafePreview shape) */
+  previewJson: json("preview_json"),
   /** Full AI analysis JSON — NEVER sent to browser pre-phone-OTP */
   fullJson: json("full_json"),
-  /** Preview fields — safe to show post-email, pre-phone */
-  previewScore: int("preview_score"),
-  previewGrade: varchar("preview_grade", { length: 4 }),
-  /** 2-3 generic findings — no dollar amounts, no contractor names */
-  previewFindings: json("preview_findings"),
-  /** 5 pillar statuses: ok | warn | flag */
-  pillarStatuses: json("pillar_statuses"),
+  /** Scanner brain version that produced this analysis */
+  rubricVersion: varchar("rubric_version", { length: 16 }),
+  /** TTL: row eligible for purge after this time */
+  expiresAt: timestamp("expires_at"),
+  /** Raw Gemini extraction output — debug only */
+  rawExtractionOutput: text("raw_extraction_output"),
+  /** Raw Gemini analysis output — debug only */
+  rawAnalysisOutput: text("raw_analysis_output"),
   /** Facebook dedup flag for SubmitApplication event */
   fbSubmitApplicationSent: boolean("fb_submit_application_sent").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

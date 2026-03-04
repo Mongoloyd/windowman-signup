@@ -30,7 +30,7 @@ describe("DB helpers — analyses", () => {
     const db = await import("./db");
     expect(typeof db.createAnalysis).toBe("function");
     expect(typeof db.getAnalysisByTempSession).toBe("function");
-    expect(typeof db.setAnalysisPreviewFields).toBe("function");
+    expect(typeof db.updateAnalysisPipelineResults).toBe("function");
     expect(typeof db.attachAnalysisToLead).toBe("function");
     expect(typeof db.unlockFullAnalysis).toBe("function");
   });

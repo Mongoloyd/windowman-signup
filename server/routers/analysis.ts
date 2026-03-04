@@ -5,6 +5,7 @@
  *
  * Security rules (non-negotiable):
  * - Full JSON is NEVER sent to the browser before phone OTP is verified.
+ * - Preview fields come ONLY from previewJson (SafePreview shape) — never from fullJson.
  * - All tokens stored as SHA-256 hashes only.
  * - File MIME validated server-side.
  * - 10MB file size limit enforced server-side.
@@ -21,7 +22,7 @@ import {
   getAnalysisById,
   getAnalysisByTempSession,
   attachAnalysisToLead,
-  setAnalysisPreviewFields,
+  updateAnalysisPipelineResults,
   unlockFullAnalysis,
   markAnalysisFailed,
   createLead,
@@ -38,6 +39,8 @@ import { sendMagicLinkEmail } from "../email";
 import { twilioClient } from "../twilio";
 import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
+import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/analysisEngine";
+import type { SafePreview } from "../scanner-brain";
 
 const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID ?? "";
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "https://itswindowman.com";
@@ -63,50 +66,15 @@ function generateToken(bytes = 32): string {
   return randomBytes(bytes).toString("hex");
 }
 
-/**
- * Stub AI analysis — returns realistic preview + full data.
- * Replace with real AI call (Gemini/Claude) in Phase 3.
- */
-function runStubAnalysis(fileName: string) {
-  const pillars = [
-    { key: "safety_code", label: "Safety & Code Match", score: 92, status: "pass", detail: "Wind load specs verified. Miami-Dade NOA confirmed." },
-    { key: "install_scope", label: "Install & Scope Clarity", score: 78, status: "warn", detail: "Missing: Stucco repair line item. \"Subject to remeasure\" clause found." },
-    { key: "price_fairness", label: "Price Fairness", score: 85, status: "warn", detail: "Labor rate 12% above county median. Material markup within range." },
-    { key: "fine_print", label: "Fine Print Transparency", score: 82, status: "warn", detail: "Permit responsibility unclear. Change order terms favor contractor." },
-    { key: "warranty", label: "Warranty Value", score: 88, status: "pass", detail: "Manufacturer warranty: Lifetime. Labor warranty: 5 years." },
-  ];
+/** SHA-256 hash file bytes for dedup */
+function hashFileBytes(buffer: Buffer): string {
+  return createHash("sha256").update(buffer).digest("hex");
+}
 
-  const overallScore = Math.round(pillars.reduce((sum, p) => sum + p.score, 0) / pillars.length);
-  const grade = overallScore >= 90 ? "A" : overallScore >= 80 ? "B" : overallScore >= 70 ? "C" : "D";
-
-  const previewFindings = [
-    "Labor rate appears above county median — worth negotiating.",
-    "Permit responsibility clause is ambiguous — ask for clarification.",
-    "Warranty terms are competitive for this market.",
-  ];
-
-  const pillarStatuses: Record<string, string> = {};
-  pillars.forEach((p) => { pillarStatuses[p.key] = p.status; });
-
-  return {
-    overallScore,
-    grade,
-    previewFindings,
-    pillarStatuses,
-    fullJson: {
-      score: overallScore,
-      grade,
-      pillars,
-      fileName,
-      analyzedAt: new Date().toISOString(),
-      overchargeEstimate: { low: 8000, high: 15000, currency: "USD" },
-      recommendations: [
-        "Request itemized labor breakdown before signing.",
-        "Clarify who pulls the permit — contractor or homeowner.",
-        "Ask for a 2-year labor warranty extension.",
-      ],
-    },
-  };
+/** Safely extract SafePreview from the previewJson column */
+function getPreviewFromAnalysis(analysis: { previewJson: unknown }): SafePreview | null {
+  if (!analysis.previewJson) return null;
+  return analysis.previewJson as SafePreview;
 }
 
 export const analysisRouter = router({
@@ -114,8 +82,8 @@ export const analysisRouter = router({
    * Step 1: Upload quote file.
    * Accepts base64-encoded file data.
    * Stores to S3 temp/ prefix.
-   * Runs stub AI analysis.
-   * Returns tempSessionId for the email gate.
+   * Inserts row as status='processing', kicks off background pipeline.
+   * Returns tempSessionId + analysisId for polling.
    */
   upload: publicProcedure
     .input(
@@ -145,7 +113,7 @@ export const analysisRouter = router({
         });
       }
 
-      // Decode base64 and upload to S3 temp/
+      // Decode base64
       let fileBuffer: Buffer;
       try {
         const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, "");
@@ -154,6 +122,10 @@ export const analysisRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid file data." });
       }
 
+      // SHA-256 dedup check
+      const fileHash = hashFileBytes(fileBuffer);
+
+      // Upload to S3 temp/
       const tempSessionId = generateToken(16);
       const ext = fileName.split(".").pop()?.toLowerCase() ?? "bin";
       const s3Key = `temp/${tempSessionId}-${Date.now()}.${ext}`;
@@ -167,35 +139,85 @@ export const analysisRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "File upload failed. Please try again." });
       }
 
-      // Run stub AI analysis
-      const analysis = runStubAnalysis(fileName);
-
-      // Create analysis record in DB
+      // Insert row immediately as status='processing'
       const analysisId = randomUUID();
+      const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000); // 6 hours TTL
+
       await createAnalysis({
         id: analysisId,
         leadId: null,
         tempSessionId,
+        fileKey: s3Key,
         fileUrl,
+        fileHash,
         fileName,
         mimeType,
-        status: "temp",
-        previewScore: analysis.overallScore,
-        previewGrade: analysis.grade,
-        previewFindings: analysis.previewFindings,
-        pillarStatuses: analysis.pillarStatuses,
-        fullJson: analysis.fullJson,
+        status: "processing",
+        rubricVersion: BRAIN_VERSION,
+        expiresAt,
       });
+
+      // Fire background pipeline (non-blocking)
+      runPipeline({ analysisId, fileUrl, mimeType })
+        .then(async (result) => {
+          await updateAnalysisPipelineResults(analysisId, {
+            status: "temp",
+            ocrTextKey: result.ocrTextKey,
+            ocrTextUrl: result.ocrTextUrl,
+            ocrMeta: {
+              page_count: result.ocrResult.page_count,
+              confidence_score: result.ocrResult.confidence_score,
+              mime: mimeType,
+            },
+            proofOfRead: result.proofOfRead,
+            previewJson: result.preview,
+            fullJson: result.fullJson,
+            rawExtractionOutput: result.rawExtractionOutput,
+            rawAnalysisOutput: result.rawOcrOutput,
+          });
+
+          console.log(`[Pipeline] Analysis ${analysisId} completed successfully.`);
+        })
+        .catch(async (err) => {
+          const errorCode = err instanceof AnalysisEngineError ? err.code : "UNKNOWN";
+          console.error(`[Pipeline] Analysis ${analysisId} failed:`, err);
+          await markAnalysisFailed(analysisId, errorCode).catch(() => {});
+        });
 
       return {
         analysisId,
         tempSessionId,
-        /** Partial preview data shown during scanning animation */
-        scanSummary: {
-          pillarsChecked: 5,
-          overallScore: analysis.overallScore,
-          grade: analysis.grade,
-        },
+        /** Status for polling — frontend should poll getStatus until 'temp' or 'failed' */
+        status: "processing" as const,
+      };
+    }),
+
+  /**
+   * Poll analysis status (for background pipeline).
+   * Returns current status + preview if available.
+   */
+  getStatus: publicProcedure
+    .input(z.object({ analysisId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const analysis = await getAnalysisById(input.analysisId);
+      if (!analysis) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Analysis not found." });
+      }
+
+      const preview = getPreviewFromAnalysis(analysis);
+
+      return {
+        analysisId: analysis.id,
+        status: analysis.status,
+        preview: analysis.status === "processing" ? null : preview,
+        /** Scan summary for the animation — only available after pipeline completes */
+        scanSummary: preview
+          ? {
+              pillarsChecked: 5,
+              overallScore: preview.overallScore,
+              grade: preview.finalGrade,
+            }
+          : null,
       };
     }),
 
@@ -357,26 +379,22 @@ export const analysisRouter = router({
         path: "/",
       });
 
+      // Extract preview from previewJson (SafePreview shape)
+      const preview = analysis ? getPreviewFromAnalysis(analysis) : null;
+
       return {
         success: true,
         leadId,
         emailVerified: true,
         analysisId: analysis?.id ?? null,
         /** Preview data — safe to show before phone OTP */
-        preview: analysis
-          ? {
-              score: analysis.previewScore,
-              grade: analysis.previewGrade,
-              findings: analysis.previewFindings,
-              pillarStatuses: analysis.pillarStatuses,
-            }
-          : null,
+        preview,
       };
     }),
 
   /**
    * Step 4: Get preview data (requires email-auth session cookie).
-   * Returns score, grade, pillar statuses, and 2-3 generic findings.
+   * Returns SafePreview shape: overallScore, finalGrade, riskLevel, warningBucket, findings.
    * Does NOT return full JSON, dollar amounts, or contractor names.
    */
   getPreview: publicProcedure
@@ -387,15 +405,14 @@ export const analysisRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Analysis not found." });
       }
 
+      const preview = getPreviewFromAnalysis(analysis);
+
       // Only return preview fields — never full JSON
       return {
         analysisId: analysis.id,
-        score: analysis.previewScore,
-        grade: analysis.previewGrade,
-        findings: analysis.previewFindings,
-        pillarStatuses: analysis.pillarStatuses,
         status: analysis.status,
         isFullUnlocked: analysis.status === "full_unlocked",
+        preview,
       };
     }),
 
@@ -571,12 +588,14 @@ export const analysisRouter = router({
         path: "/",
       });
 
-      // Send team notification SMS
+      // Send team notification SMS — extract from previewJson
+      const preview = getPreviewFromAnalysis(analysis);
       try {
         const { sendSMS } = await import("../twilio");
         const teamPhone = process.env.TWILIO_TEAM_PHONE ?? process.env.TWILIO_PHONE_NUMBER ?? "";
         if (teamPhone) {
-          await sendSMS(teamPhone, `✅ VERIFIED LEAD (Quote Upload)\nPhone: ${e164}\nAnalysis: ${analysisId}\nScore: ${analysis.previewScore}/100 (${analysis.previewGrade})`);
+          const scoreText = preview ? `${preview.overallScore}/100 (${preview.finalGrade})` : "N/A";
+          await sendSMS(teamPhone, `✅ VERIFIED LEAD (Quote Upload)\nPhone: ${e164}\nAnalysis: ${analysisId}\nScore: ${scoreText}`);
         }
       } catch (err) {
         console.error("[Twilio] Team SMS failed:", err);

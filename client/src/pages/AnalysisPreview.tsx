@@ -442,19 +442,19 @@ export default function AnalysisPreview() {
               <div className="lg:col-span-2 space-y-4">
                 {/* Grade card */}
                 <div className="rounded-2xl p-6 border border-white/6" style={{ background: "rgba(15,20,25,0.8)" }}>
-                  <GradeBadge grade={previewData.grade ?? "?"} score={previewData.score ?? 0} />
+                  <GradeBadge grade={previewData.preview?.finalGrade ?? "?"} score={previewData.preview?.overallScore ?? 0} />
 
                   {/* Findings */}
                   {(() => {
-                    const findings = previewData.findings as string[] | null;
+                    const findings = previewData.preview?.findings;
                     if (!findings || findings.length === 0) return null;
                     return (
                       <div className="mt-6 space-y-2">
                         <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-3">Key Findings</p>
-                        {findings.map((f: string, i: number) => (
+                        {findings.map((f: any, i: number) => (
                           <div key={i} className="flex items-start gap-2 text-sm text-slate-300">
                             <ChevronRight className="w-4 h-4 text-[#00D9FF] shrink-0 mt-0.5" />
-                            {f}
+                            {f.label ?? f.tooltip ?? String(f)}
                           </div>
                         ))}
                       </div>
@@ -465,14 +465,19 @@ export default function AnalysisPreview() {
                 {/* Pillar statuses */}
                 <div className="space-y-2">
                   <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-3">5-Pillar Analysis</p>
-                  {PILLAR_CONFIG.map((pillar) => (
-                    <PillarCard
-                      key={pillar.key}
-                      pillar={pillar}
-                      status={(previewData.pillarStatuses as Record<string, string> | null)?.[pillar.key]}
-                      locked={false}
-                    />
-                  ))}
+                  {PILLAR_CONFIG.map((pillar) => {
+                    // Derive status from findings: if a finding matches this pillar, use its severity
+                    const finding = previewData.preview?.findings?.find((f: any) => f.pillar === pillar.label || f.pillar === pillar.key);
+                    const status = finding ? (finding.severity === "flag" ? "fail" : "warn") : undefined;
+                    return (
+                      <PillarCard
+                        key={pillar.key}
+                        pillar={pillar}
+                        status={status}
+                        locked={false}
+                      />
+                    );
+                  })}
                 </div>
               </div>
 
@@ -586,8 +591,8 @@ export default function AnalysisPreview() {
             {/* Grade */}
             <div className="rounded-2xl p-8 border border-white/6 mb-6" style={{ background: "rgba(15,20,25,0.8)" }}>
               <GradeBadge
-                grade={fullAnalysis?.grade ?? previewData?.grade ?? "?"}
-                score={fullAnalysis?.score ?? previewData?.score ?? 0}
+                grade={fullAnalysis?.grade ?? previewData?.preview?.finalGrade ?? "?"}
+                score={fullAnalysis?.score ?? previewData?.preview?.overallScore ?? 0}
               />
 
               {fullAnalysis?.overchargeEstimate && (
@@ -621,13 +626,17 @@ export default function AnalysisPreview() {
                   );
                 })
               ) : (
-                PILLAR_CONFIG.map((pillar) => (
-                  <PillarCard
-                    key={pillar.key}
-                    pillar={pillar}
-                    status={(previewData?.pillarStatuses as Record<string, string> | null | undefined)?.[pillar.key]}
-                  />
-                ))
+                PILLAR_CONFIG.map((pillar) => {
+                  const finding = previewData?.preview?.findings?.find((f: any) => f.pillar === pillar.label || f.pillar === pillar.key);
+                  const status = finding ? (finding.severity === "flag" ? "fail" : "warn") : undefined;
+                  return (
+                    <PillarCard
+                      key={pillar.key}
+                      pillar={pillar}
+                      status={status}
+                    />
+                  );
+                })
               )}
             </div>
 

@@ -1,0 +1,138 @@
+{
+  "query": "SHOW COLUMNS FROM analyses;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 27uXEReyi2JBs58.ee1f7a6279f6 --database QkvsDE9FRrFndBys6dgpY4 --execute SHOW COLUMNS FROM analyses;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "char(36)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "lead_id",
+      "Type": "char(36)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "temp_session_id",
+      "Type": "varchar(64)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "file_url",
+      "Type": "text",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "file_name",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "mime_type",
+      "Type": "varchar(64)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('temp','persisted_email_verified','full_unlocked','failed','purged')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "temp",
+      "Extra": ""
+    },
+    {
+      "Field": "error_code",
+      "Type": "varchar(64)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "full_json",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "preview_score",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "preview_grade",
+      "Type": "varchar(4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "preview_findings",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "pillar_statuses",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "fb_submit_application_sent",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updated_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tchar(36)\tNO\tPRI\tNULL\t\nlead_id\tchar(36)\tYES\t\tNULL\t\ntemp_session_id\tvarchar(64)\tYES\t\tNULL\t\nfile_url\ttext\tNO\t\tNULL\t\nfile_name\tvarchar(255)\tYES\t\tNULL\t\nmime_type\tvarchar(64)\tYES\t\tNULL\t\nstatus\tenum('temp','persisted_email_verified','full_unlocked','failed','purged')\tNO\t\ttemp\t\nerror_code\tvarchar(64)\tYES\t\tNULL\t\nfull_json\tjson\tYES\t\tNULL\t\npreview_score\tint\tYES\t\tNULL\t\npreview_grade\tvarchar(4)\tYES\t\tNULL\t\npreview_findings\tjson\tYES\t\tNULL\t\npillar_statuses\tjson\tYES\t\tNULL\t\nfb_submit_application_sent\ttinyint(1)\tNO\t\t0\t\ncreated_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdated_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 434
+}

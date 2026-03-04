@@ -86,6 +86,44 @@
 - [x] Install @google/genai SDK (v1.43.0)
 - [x] Add GEMINI_API_KEY to ENV object in server/_core/env.ts
 - [x] Scaffold server/services/analysisEngine.ts with Zod schemas, AnalysisEngineError, rubric placeholder, and analyzeQuote() function
-- [ ] Inject extraction rubric and scoring math (awaiting product owner input)
-- [ ] Wire analysisEngine into analysis.upload tRPC procedure
-- [ ] Write Vitest tests for analysisEngine
+- [x] Inject extraction rubric and scoring math (PRD provided as canonical source)
+- [x] Wire analysisEngine into analysis.upload tRPC procedure (via runPipeline)
+- [ ] Write Vitest tests for analysisEngine (Gemini quota blocked — skipped)
+
+## Master PRD vFinal: Manus Truth Engine Decoupling
+### Deliverable 1: /server/scanner-brain (Pure Logic Island)
+- [x] Create server/scanner-brain/index.ts (barrel with BRAIN_VERSION=3.0.0)
+- [x] Create server/scanner-brain/schema.ts (ExtractionSignalsSchema + sanitizeForPrompt)
+- [x] Create server/scanner-brain/rubric.ts (EXTRACTION_RUBRIC + GRADING_RUBRIC + USER_PROMPT_TEMPLATE)
+- [x] Create server/scanner-brain/scoring.ts (scoreFromSignals + generateSafePreview + derivePillarStatuses)
+- [x] Create server/scanner-brain/forensic.ts (generateForensicSummary + extractIdentity)
+### Deliverable 2: Database Patch
+- [x] Add new columns to analyses table (fileKey, fileHash, ocrTextKey, ocrTextUrl, ocrMeta, proofOfRead, previewJson, rubricVersion, expiresAt, raw_extraction_output, raw_analysis_output)
+- [x] Update status enum (add "processing")
+- [x] Add email_verified_at and phone_verified_at to leads table
+- [x] Add indexes (fileHash, status+expiresAt)
+- [x] Update Drizzle schema.ts to match
+### Deliverable 3: Upload Pipeline
+- [x] Rewrite analysis.upload: MIME validation, SHA-256 dedup, immediate row insert, background runPipeline
+- [x] Implement runPipeline: OCR → Proof-of-Read → Signals extraction → scoring → preview → forensic → persist
+- [x] Implement single-retry on ExtractionSignalsSchema.strict().parse() failure
+### Deliverable 4: Access Ladder Router
+- [x] Implement GET /analysis/:id with identity-gated response stripping (public/email/phone tiers)
+### Deliverable 5: TTL Purge + Observability
+- [x] Update purge job for new status enum (processing + temp)
+- [ ] Emit scanner_analysis_completed, scanner_purged, scanner_dedup_hit events (deferred — observability pass)
+### Tests
+- [ ] Vitest: scanner-brain pure logic (scoring, preview censor-greens, rounding, bucketing) — blocked by Gemini quota
+- [ ] Vitest: access ladder security (no preview leak, no full leak)
+- [ ] Vitest: dedup logic
+
+## TS Error Fix: previewJson migration
+- [x] Replace previewScore/previewGrade/previewFindings/pillarStatuses refs in analysis.ts with previewJson cast to SafePreview
+- [x] Remove runStubAnalysis function — replaced by pipeline
+- [x] Update createAnalysis call in upload to use new column names
+- [x] Update verifyEmail return to extract from previewJson
+- [x] Update getPreview to extract from previewJson
+- [x] Update verifyPhoneOTP team SMS to extract from previewJson
+- [x] Replace setAnalysisPreviewFields with updateAnalysisPipelineResults in db.ts
+- [x] Fix AnalysisPreview.tsx: use preview.finalGrade, preview.overallScore, preview.findings
+- [x] Verify 0 TS errors

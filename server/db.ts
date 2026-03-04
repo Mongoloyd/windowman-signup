@@ -185,23 +185,28 @@ export async function attachAnalysisToLead(analysisId: string, leadId: string): 
   await db.update(analyses).set({ leadId, status: "persisted_email_verified" }).where(eq(analyses.id, analysisId));
 }
 
-export async function setAnalysisPreviewFields(
+/**
+ * Update analysis with pipeline results (previewJson, fullJson, OCR metadata, etc.).
+ * Called by the background pipeline after successful completion.
+ */
+export async function updateAnalysisPipelineResults(
   analysisId: string,
   fields: {
-    previewScore: number;
-    previewGrade: string;
-    previewFindings: unknown[];
-    pillarStatuses: Record<string, string>;
+    status: "processing" | "temp" | "persisted_email_verified" | "full_unlocked" | "failed" | "purged";
+    ocrTextKey?: string;
+    ocrTextUrl?: string;
+    ocrMeta?: unknown;
+    proofOfRead?: unknown;
+    previewJson?: unknown;
+    fullJson?: unknown;
+    rawExtractionOutput?: string;
+    rawAnalysisOutput?: string;
+    rubricVersion?: string;
   }
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(analyses).set({
-    previewScore: fields.previewScore,
-    previewGrade: fields.previewGrade,
-    previewFindings: fields.previewFindings,
-    pillarStatuses: fields.pillarStatuses,
-  }).where(eq(analyses.id, analysisId));
+  await db.update(analyses).set(fields).where(eq(analyses.id, analysisId));
 }
 
 export async function unlockFullAnalysis(analysisId: string, fullJson: unknown): Promise<void> {
@@ -220,16 +225,24 @@ export async function markAnalysisFailed(analysisId: string, errorCode: string):
 }
 
 /**
- * Fetch all temp analyses older than 6 hours (for purge job).
+ * Fetch all temp/processing analyses past their TTL (for purge job).
+ * Uses expiresAt if set, otherwise falls back to createdAt + 6 hours.
  */
 export async function getExpiredTempAnalyses(): Promise<Analysis[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const now = new Date();
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
-  return db
+  // Purge rows that are temp or processing and past their TTL
+  const tempExpired = await db
     .select()
     .from(analyses)
     .where(and(eq(analyses.status, "temp"), lt(analyses.createdAt, sixHoursAgo)));
+  const processingExpired = await db
+    .select()
+    .from(analyses)
+    .where(and(eq(analyses.status, "processing"), lt(analyses.createdAt, sixHoursAgo)));
+  return [...tempExpired, ...processingExpired];
 }
 
 export async function markAnalysisPurged(analysisId: string): Promise<void> {
