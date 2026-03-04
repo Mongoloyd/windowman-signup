@@ -144,6 +144,12 @@ export async function updateLeadQualification(
   }).where(eq(leads.id, leadId));
 }
 
+export async function setLeadFraud(leadId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(leads).set({ isFraud: true }).where(eq(leads.id, leadId));
+}
+
 export async function getAllLeads(): Promise<Lead[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

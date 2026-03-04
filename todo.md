@@ -206,3 +206,13 @@
 - [x] Disable Send Code button and show countdown when sendCodeCooldown.isBlocked
 - [x] Show inline countdown banner below Send Code button (amber/red matching OTP style)
 - [x] Clear sendCodeCooldown on successful OTP send (onSuccess of sendPhoneOTP)
+
+## Honeypot Bot Protection
+- [x] Add isFraud boolean column to leads table in drizzle/schema.ts
+- [x] Added is_fraud column via direct SQL ALTER TABLE (migration journal issue workaround)
+- [x] Add CSS-hidden honeypot input to QualificationCard (name="website", position: absolute left: -9999px)
+- [x] Pass honeypot field value in lookupAndCreateLead, requestEmailVerification, submitNoQuoteLead
+- [x] Server-side: if honeypot non-empty, set isFraud=true silently and return success
+- [x] Add setLeadFraud DB helper; also flags existing leads that re-submit with honeypot filled
+- [x] Log wm_honeypot_triggered lead_event for observability
+- [x] Write 17 Vitest tests: detection logic, schema validation, silent success contract — 116/116 total

@@ -35,6 +35,7 @@ import {
   logLeadEvent,
   createLeadSession,
   getAnalysisByHash,
+  setLeadFraud,
 } from "../db";
 import { sendMagicLinkEmail } from "../email";
 import { twilioClient } from "../twilio";
@@ -291,10 +292,13 @@ export const analysisRouter = router({
         tempSessionId: z.string().min(1),
         /** Frontend origin for building the magic link URL */
         origin: z.string().url().optional(),
+        /** Honeypot — must be empty for real users */
+        honeypot: z.string().max(200).optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { email, tempSessionId, origin } = input;
+      const { email, tempSessionId, origin, honeypot } = input;
+      const isBotSubmission = typeof honeypot === "string" && honeypot.trim().length > 0;
 
       // Find the temp analysis
       const analysis = await getAnalysisByTempSession(tempSessionId);
@@ -314,11 +318,27 @@ export const analysisRouter = router({
           email,
           emailVerified: false,
           phoneVerified: false,
+          isFraud: isBotSubmission,
         });
         lead = await getLeadByEmail(email);
+      } else if (isBotSubmission && !lead.isFraud) {
+        // Existing lead submitted by a bot — flag it
+        await setLeadFraud(lead.id);
       }
 
       if (!lead) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create lead." });
+
+      // Log honeypot event for observability
+      if (isBotSubmission) {
+        await logLeadEvent({
+          id: randomUUID(),
+          leadId: lead.id,
+          eventName: "wm_honeypot_triggered",
+          eventId: `${lead.id}_wm_honeypot_triggered_flow_a`,
+          source: "server",
+          payload: { honeypotLength: honeypot!.length, flow: "flow_a" },
+        }).catch(() => {});
+      }
 
       // Generate magic link token
       const rawToken = generateToken(32);
@@ -746,10 +766,13 @@ export const analysisRouter = router({
         email: z.string().email(),
         answers: z.record(z.string(), z.unknown()),
         origin: z.string().url().optional(),
+        /** Honeypot — must be empty for real users */
+        honeypot: z.string().max(200).optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { email, answers, origin } = input;
+      const { email, answers, origin, honeypot } = input;
+      const isBotSubmission = typeof honeypot === "string" && honeypot.trim().length > 0;
 
       let lead = await getLeadByEmail(email);
       if (!lead) {
@@ -761,13 +784,30 @@ export const analysisRouter = router({
           phoneVerified: false,
           qualificationAnswers: answers,
           qualificationCompletedAt: new Date(),
+          isFraud: isBotSubmission,
         });
         lead = await getLeadByEmail(email);
+      } else if (isBotSubmission && !lead.isFraud) {
+        await setLeadFraud(lead.id);
       }
 
       if (!lead) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create lead." });
 
-      // Log event
+      // Log honeypot event for observability
+      if (isBotSubmission) {
+        await logLeadEvent({
+          id: randomUUID(),
+          leadId: lead.id,
+          eventName: "wm_honeypot_triggered",
+          eventId: `${lead.id}_wm_honeypot_triggered_flow_b`,
+          source: "server",
+          payload: { honeypotLength: honeypot!.length, flow: "flow_b" },
+        }).catch(() => {});
+        // Return success so the bot thinks it worked
+        return { leadId: lead.id };
+      }
+
+      // Log normal account creation event
       await logLeadEvent({
         id: randomUUID(),
         leadId: lead.id,
