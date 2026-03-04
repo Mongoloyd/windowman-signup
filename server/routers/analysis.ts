@@ -42,6 +42,7 @@ import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
 import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/analysisEngine";
 import type { SafePreview } from "../scanner-brain";
+import { otpRateLimiter } from "../rateLimiter";
 
 const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID ?? "";
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "https://itswindowman.com";
@@ -531,6 +532,16 @@ export const analysisRouter = router({
 
       const digits = input.phone.replace(/\D/g, "");
       const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+
+      // ── Rate limit: max 5 OTP sends per phone per 10-minute window ──
+      const rateCheck = otpRateLimiter.check(e164);
+      if (!rateCheck.allowed) {
+        console.warn(`[RateLimit] OTP rate limit exceeded for ${e164}. Remaining: ${rateCheck.remaining}`);
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many attempts. Please try again in 10 minutes.",
+        });
+      }
 
       try {
         await twilioClient.verify.v2

@@ -168,3 +168,8 @@
 - [x] Wire NOT_A_QUOTE error code into upload mutation error handler
 - [x] Show not_a_quote UI state (amber warning, "That doesn't look like a quote", Try Different File CTA)
 - [x] E2E Test 2: upload grocery receipt, verified NOT_A_QUOTE in 2 polls, screenshot captured
+
+## OTP Rate Limiting (Twilio Billing Protection)
+- [x] Implement in-memory rate limiter (max 5 OTP sends per phone per 10 min window)
+- [x] Wire rate limiter into analysis.sendPhoneOTP procedure (throw TOO_MANY_REQUESTS)
+- [x] Write Vitest test: simulate 6 rapid requests, assert 6th is blocked with 429 — 12 tests pass
