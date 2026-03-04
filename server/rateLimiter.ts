@@ -155,3 +155,163 @@ export function getClientIp(req: {
   }
   return req.ip ?? req.socket?.remoteAddress ?? "unknown";
 }
+
+// ─── Progressive Exponential Backoff (Smart Cooldown) ─────────────────────
+
+/**
+ * Escalation tier configuration.
+ * Each tier defines the cooldown duration and whether CAPTCHA is required.
+ */
+export interface BackoffTier {
+  /** Cooldown duration in milliseconds (0 = no cooldown) */
+  cooldownMs: number;
+  /** Whether CAPTCHA is required at this tier */
+  captchaRequired: boolean;
+}
+
+export interface BackoffResult {
+  /** Whether the request is allowed right now */
+  allowed: boolean;
+  /** Current failure count (before this attempt) */
+  failureCount: number;
+  /** Milliseconds remaining until cooldown expires (0 if allowed) */
+  cooldownRemainingMs: number;
+  /** Whether CAPTCHA is required at the current tier */
+  captchaRequired: boolean;
+  /** Human-readable message for the frontend */
+  message: string;
+}
+
+/**
+ * Progressive exponential backoff for OTP verification failures.
+ *
+ * Instead of a flat block, escalates punishment progressively:
+ *   1st fail: no cooldown (fat-finger forgiveness)
+ *   2nd fail: 30-second delay
+ *   3rd fail: 2-minute delay
+ *   4th+ fail: 10-minute block + CAPTCHA required
+ *
+ * This preserves conversion for real humans while making brute-force
+ * mathematically impossible for bots.
+ *
+ * Keyed by phone number (E.164). Resets on successful verification.
+ */
+export class ProgressiveBackoff {
+  private state: Map<string, { failureCount: number; lastFailureAt: number }> = new Map();
+  private readonly tiers: BackoffTier[];
+
+  constructor(tiers: BackoffTier[]) {
+    if (tiers.length === 0) throw new Error("At least one backoff tier is required.");
+    this.tiers = tiers;
+  }
+
+  /**
+   * Record a failed verification attempt and return the current backoff state.
+   * Call this AFTER a failed OTP check.
+   */
+  recordFailure(key: string, now: number = Date.now()): BackoffResult {
+    const entry = this.state.get(key);
+    const failureCount = (entry?.failureCount ?? 0) + 1;
+    this.state.set(key, { failureCount, lastFailureAt: now });
+
+    const tierIndex = Math.min(failureCount - 1, this.tiers.length - 1);
+    const tier = this.tiers[tierIndex];
+
+    return {
+      allowed: true, // Just recording; next check() will enforce
+      failureCount,
+      cooldownRemainingMs: tier.cooldownMs,
+      captchaRequired: tier.captchaRequired,
+      message: this.buildMessage(tier, failureCount),
+    };
+  }
+
+  /**
+   * Check if a request is allowed (not in cooldown).
+   * Call this BEFORE attempting OTP verification.
+   */
+  check(key: string, now: number = Date.now()): BackoffResult {
+    const entry = this.state.get(key);
+    if (!entry || entry.failureCount === 0) {
+      return {
+        allowed: true,
+        failureCount: 0,
+        cooldownRemainingMs: 0,
+        captchaRequired: false,
+        message: "",
+      };
+    }
+
+    const tierIndex = Math.min(entry.failureCount - 1, this.tiers.length - 1);
+    const tier = this.tiers[tierIndex];
+    const elapsed = now - entry.lastFailureAt;
+    const remaining = Math.max(0, tier.cooldownMs - elapsed);
+
+    if (remaining > 0) {
+      return {
+        allowed: false,
+        failureCount: entry.failureCount,
+        cooldownRemainingMs: remaining,
+        captchaRequired: tier.captchaRequired,
+        message: this.buildMessage(tier, entry.failureCount),
+      };
+    }
+
+    // Cooldown expired — allowed, but still at the current tier
+    return {
+      allowed: true,
+      failureCount: entry.failureCount,
+      cooldownRemainingMs: 0,
+      captchaRequired: tier.captchaRequired,
+      message: "",
+    };
+  }
+
+  /**
+   * Reset backoff state for a key (call on successful OTP verification).
+   */
+  reset(key: string): void {
+    this.state.delete(key);
+  }
+
+  /**
+   * Get the current failure count for a key (for testing/debugging).
+   */
+  getFailureCount(key: string): number {
+    return this.state.get(key)?.failureCount ?? 0;
+  }
+
+  /**
+   * Clear all state (for testing).
+   */
+  clearAll(): void {
+    this.state.clear();
+  }
+
+  private buildMessage(tier: BackoffTier, failureCount: number): string {
+    if (tier.cooldownMs === 0) {
+      return "Incorrect code. Please check the SMS and try again.";
+    }
+    const seconds = Math.round(tier.cooldownMs / 1000);
+    const timeStr = seconds >= 60 ? `${Math.round(seconds / 60)} minute${seconds >= 120 ? "s" : ""}` : `${seconds} seconds`;
+    const base = `Too many incorrect attempts. Please wait ${timeStr} before trying again.`;
+    return tier.captchaRequired ? `${base} You'll need to complete a verification challenge.` : base;
+  }
+}
+
+// ─── Singleton: OTP verification backoff ─────────────────────────────────
+
+/**
+ * Progressive backoff for OTP verification failures.
+ * Tier escalation:
+ *   1st fail: 0s cooldown (forgiveness for fat-fingers)
+ *   2nd fail: 30s cooldown
+ *   3rd fail: 2min cooldown
+ *   4th+ fail: 10min cooldown + CAPTCHA required
+ */
+export const otpBackoff = new ProgressiveBackoff([
+  { cooldownMs: 0, captchaRequired: false },                    // 1st fail
+  { cooldownMs: 30 * 1000, captchaRequired: false },             // 2nd fail
+  { cooldownMs: 2 * 60 * 1000, captchaRequired: false },         // 3rd fail
+  { cooldownMs: 10 * 60 * 1000, captchaRequired: true },         // 4th+ fail
+]);

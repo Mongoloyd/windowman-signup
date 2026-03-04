@@ -184,3 +184,10 @@
 - [x] Add getClientIp helper (x-forwarded-for → req.ip → socket.remoteAddress → "unknown")
 - [x] Wire IP rate limiter into lookupPhone and sendPhoneOTP (checked before per-phone limiter)
 - [x] Write Vitest test: 21 requests from same IP with different phones, 21st blocked — 11 tests pass
+
+## Progressive Exponential Backoff (Smart Cooldown)
+- [x] Implement ProgressiveBackoff class (1st fail: 0s, 2nd: 30s, 3rd: 2min, 4th+: 10min + captchaRequired flag)
+- [x] Wire into verifyPhoneOTP failure path (wrong OTP code triggers escalation)
+- [x] Return cooldownMs and captchaRequired in TOO_MANY_REQUESTS/BAD_REQUEST error cause
+- [x] Reset backoff on successful OTP verification
+- [x] Write Vitest tests for all 4 escalation tiers + reset + brute-force simulation — 12 tests pass

@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { SlidingWindowRateLimiter, otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp } from "./rateLimiter";
+import { SlidingWindowRateLimiter, otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp, ProgressiveBackoff, otpBackoff } from "./rateLimiter";
 
 // ─── Unit tests for SlidingWindowRateLimiter ─────────────────────────────────
 
@@ -444,5 +444,232 @@ describe("getClientIp helper", () => {
   it("returns 'unknown' when no IP source is available", () => {
     const ip = getClientIp({ headers: {} });
     expect(ip).toBe("unknown");
+  });
+});
+
+// ─── ProgressiveBackoff unit tests ──────────────────────────────────────────
+
+describe("ProgressiveBackoff", () => {
+  const tiers = [
+    { cooldownMs: 0, captchaRequired: false },           // 1st fail
+    { cooldownMs: 30_000, captchaRequired: false },      // 2nd fail
+    { cooldownMs: 120_000, captchaRequired: false },     // 3rd fail
+    { cooldownMs: 600_000, captchaRequired: true },      // 4th+ fail
+  ];
+
+  let backoff: ProgressiveBackoff;
+
+  beforeEach(() => {
+    backoff = new ProgressiveBackoff(tiers);
+  });
+
+  it("allows first request with no prior failures", () => {
+    const result = backoff.check("+13055551234");
+    expect(result.allowed).toBe(true);
+    expect(result.failureCount).toBe(0);
+    expect(result.cooldownRemainingMs).toBe(0);
+    expect(result.captchaRequired).toBe(false);
+  });
+
+  it("1st failure: records failure, 0s cooldown, no CAPTCHA", () => {
+    const now = 1700000000000;
+    const result = backoff.recordFailure("+13055551234", now);
+    expect(result.failureCount).toBe(1);
+    expect(result.cooldownRemainingMs).toBe(0);
+    expect(result.captchaRequired).toBe(false);
+    expect(result.message).toContain("Incorrect code");
+
+    // Immediately allowed (0s cooldown)
+    const check = backoff.check("+13055551234", now + 1);
+    expect(check.allowed).toBe(true);
+  });
+
+  it("2nd failure: 30s cooldown, no CAPTCHA", () => {
+    const now = 1700000000000;
+    backoff.recordFailure("+13055551234", now);
+    const result = backoff.recordFailure("+13055551234", now + 1000);
+    expect(result.failureCount).toBe(2);
+    expect(result.cooldownRemainingMs).toBe(30_000);
+    expect(result.captchaRequired).toBe(false);
+
+    // Blocked at now + 2000 (only 1s elapsed, need 30s)
+    const blocked = backoff.check("+13055551234", now + 2000);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.cooldownRemainingMs).toBe(29_000);
+
+    // Allowed after 30s from last failure
+    const allowed = backoff.check("+13055551234", now + 1000 + 30_001);
+    expect(allowed.allowed).toBe(true);
+  });
+
+  it("3rd failure: 2-minute cooldown, no CAPTCHA", () => {
+    const now = 1700000000000;
+    backoff.recordFailure("+13055551234", now);
+    backoff.recordFailure("+13055551234", now + 1000);
+    const result = backoff.recordFailure("+13055551234", now + 32_000);
+    expect(result.failureCount).toBe(3);
+    expect(result.cooldownRemainingMs).toBe(120_000);
+    expect(result.captchaRequired).toBe(false);
+    expect(result.message).toContain("2 minutes");
+
+    // Blocked during cooldown
+    const blocked = backoff.check("+13055551234", now + 60_000);
+    expect(blocked.allowed).toBe(false);
+
+    // Allowed after 2min from 3rd failure
+    const allowed = backoff.check("+13055551234", now + 32_000 + 120_001);
+    expect(allowed.allowed).toBe(true);
+  });
+
+  it("4th failure: 10-minute cooldown + CAPTCHA required", () => {
+    const now = 1700000000000;
+    backoff.recordFailure("+13055551234", now);
+    backoff.recordFailure("+13055551234", now + 1000);
+    backoff.recordFailure("+13055551234", now + 32_000);
+    const result = backoff.recordFailure("+13055551234", now + 160_000);
+    expect(result.failureCount).toBe(4);
+    expect(result.cooldownRemainingMs).toBe(600_000);
+    expect(result.captchaRequired).toBe(true);
+    expect(result.message).toContain("10 minutes");
+    expect(result.message).toContain("verification challenge");
+
+    // Blocked during cooldown with CAPTCHA flag
+    const blocked = backoff.check("+13055551234", now + 200_000);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.captchaRequired).toBe(true);
+  });
+
+  it("5th+ failures stay at tier 4 (10min + CAPTCHA)", () => {
+    const now = 1700000000000;
+    // Record 5 failures, each well after the previous cooldown expires
+    // Tier 1: 0s, Tier 2: 30s, Tier 3: 2min, Tier 4: 10min, Tier 4: 10min
+    backoff.recordFailure("+13055551234", now);                    // fail 1 (0s cooldown)
+    backoff.recordFailure("+13055551234", now + 1_000);            // fail 2 (30s cooldown)
+    backoff.recordFailure("+13055551234", now + 32_000);           // fail 3 (2min cooldown)
+    backoff.recordFailure("+13055551234", now + 160_000);          // fail 4 (10min cooldown)
+    backoff.recordFailure("+13055551234", now + 800_000);          // fail 5 (10min cooldown)
+
+    // Check 30s after 5th failure — should still be in 10min cooldown
+    const check = backoff.check("+13055551234", now + 830_000);
+    expect(check.allowed).toBe(false);
+    expect(check.captchaRequired).toBe(true);
+    expect(check.failureCount).toBe(5);
+  });
+
+  it("reset clears all state — allows immediately after", () => {
+    const now = 1700000000000;
+    // Escalate to tier 4
+    for (let i = 0; i < 4; i++) {
+      backoff.recordFailure("+13055551234", now + i * 700_000);
+    }
+    expect(backoff.getFailureCount("+13055551234")).toBe(4);
+
+    // Reset (simulates successful OTP verification)
+    backoff.reset("+13055551234");
+    expect(backoff.getFailureCount("+13055551234")).toBe(0);
+
+    const check = backoff.check("+13055551234", now + 3_000_000);
+    expect(check.allowed).toBe(true);
+    expect(check.failureCount).toBe(0);
+    expect(check.captchaRequired).toBe(false);
+  });
+
+  it("different phone numbers are tracked independently", () => {
+    const now = 1700000000000;
+    // Escalate phone A to tier 4
+    for (let i = 0; i < 4; i++) {
+      backoff.recordFailure("+13055551111", now + i * 700_000);
+    }
+    // Phone B should be clean
+    const check = backoff.check("+13055552222", now + 3_000_000);
+    expect(check.allowed).toBe(true);
+    expect(check.failureCount).toBe(0);
+  });
+
+  it("throws if constructed with zero tiers", () => {
+    expect(() => new ProgressiveBackoff([])).toThrow("At least one backoff tier is required.");
+  });
+
+  it("cooldownRemainingMs decreases as time passes", () => {
+    const now = 1700000000000;
+    backoff.recordFailure("+13055551234", now);
+    backoff.recordFailure("+13055551234", now + 1000); // 2nd fail → 30s cooldown
+
+    // Check at 10s after 2nd failure
+    const at10s = backoff.check("+13055551234", now + 1000 + 10_000);
+    expect(at10s.allowed).toBe(false);
+    expect(at10s.cooldownRemainingMs).toBe(20_000);
+
+    // Check at 20s after 2nd failure
+    const at20s = backoff.check("+13055551234", now + 1000 + 20_000);
+    expect(at20s.allowed).toBe(false);
+    expect(at20s.cooldownRemainingMs).toBe(10_000);
+
+    // Check at 30s after 2nd failure — exactly at boundary
+    const at30s = backoff.check("+13055551234", now + 1000 + 30_000);
+    expect(at30s.allowed).toBe(true);
+    expect(at30s.cooldownRemainingMs).toBe(0);
+  });
+});
+
+// ─── otpBackoff singleton tests ─────────────────────────────────────────────
+
+describe("otpBackoff singleton", () => {
+  beforeEach(() => {
+    otpBackoff.clearAll();
+  });
+
+  it("is configured with 4 tiers: 0s, 30s, 2min, 10min+CAPTCHA", () => {
+    const phone = "+13055551234";
+    const now = 1700000000000;
+
+    // 1st fail → 0s cooldown
+    const f1 = otpBackoff.recordFailure(phone, now);
+    expect(f1.cooldownRemainingMs).toBe(0);
+    expect(f1.captchaRequired).toBe(false);
+
+    // 2nd fail → 30s cooldown
+    const f2 = otpBackoff.recordFailure(phone, now + 1000);
+    expect(f2.cooldownRemainingMs).toBe(30_000);
+    expect(f2.captchaRequired).toBe(false);
+
+    // 3rd fail → 2min cooldown
+    const f3 = otpBackoff.recordFailure(phone, now + 32_000);
+    expect(f3.cooldownRemainingMs).toBe(120_000);
+    expect(f3.captchaRequired).toBe(false);
+
+    // 4th fail → 10min + CAPTCHA
+    const f4 = otpBackoff.recordFailure(phone, now + 160_000);
+    expect(f4.cooldownRemainingMs).toBe(600_000);
+    expect(f4.captchaRequired).toBe(true);
+  });
+
+  it("full brute-force simulation: bot tries 10 codes rapidly", () => {
+    const phone = "+13055559999";
+    const now = 1700000000000;
+    const attempts: Array<{ i: number; allowed: boolean; cooldown: number; captcha: boolean }> = [];
+
+    for (let i = 0; i < 10; i++) {
+      // Check if allowed
+      const check = otpBackoff.check(phone, now + i * 100);
+      attempts.push({ i: i + 1, allowed: check.allowed, cooldown: check.cooldownRemainingMs, captcha: check.captchaRequired });
+
+      if (check.allowed) {
+        // Simulate wrong code → record failure
+        otpBackoff.recordFailure(phone, now + i * 100);
+      }
+    }
+
+    // Attempt 1: allowed (no prior failures)
+    expect(attempts[0].allowed).toBe(true);
+    // Attempt 2: allowed (1st fail had 0s cooldown)
+    expect(attempts[1].allowed).toBe(true);
+    // Attempt 3: BLOCKED (2nd fail imposed 30s cooldown, only 100ms elapsed)
+    expect(attempts[2].allowed).toBe(false);
+    expect(attempts[2].cooldown).toBeGreaterThan(0);
+    // All subsequent attempts: BLOCKED (still in 30s cooldown)
+    for (let i = 3; i < 10; i++) {
+      expect(attempts[i].allowed, `Attempt ${i + 1} should be blocked`).toBe(false);
+    }
   });
 });

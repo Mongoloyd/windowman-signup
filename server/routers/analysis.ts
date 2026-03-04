@@ -42,7 +42,7 @@ import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
 import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/analysisEngine";
 import type { SafePreview } from "../scanner-brain";
-import { otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp } from "../rateLimiter";
+import { otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp, otpBackoff } from "../rateLimiter";
 
 const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID ?? "";
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "https://itswindowman.com";
@@ -614,6 +614,21 @@ export const analysisRouter = router({
       const digits = phone.replace(/\D/g, "");
       const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
 
+      // ── Progressive backoff: check if in cooldown from prior failures ──
+      const backoffCheck = otpBackoff.check(e164);
+      if (!backoffCheck.allowed) {
+        console.warn(`[Backoff] OTP verify blocked for ${e164}. Failures: ${backoffCheck.failureCount}, cooldown: ${backoffCheck.cooldownRemainingMs}ms, captcha: ${backoffCheck.captchaRequired}`);
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: backoffCheck.message,
+          cause: {
+            cooldownRemainingMs: backoffCheck.cooldownRemainingMs,
+            captchaRequired: backoffCheck.captchaRequired,
+            failureCount: backoffCheck.failureCount,
+          },
+        });
+      }
+
       // Verify OTP with Twilio
       let verificationStatus: string;
       try {
@@ -630,11 +645,21 @@ export const analysisRouter = router({
       }
 
       if (verificationStatus !== "approved") {
+        // Record failure and escalate backoff tier
+        const backoffState = otpBackoff.recordFailure(e164);
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Incorrect code. Please check the SMS and try again.",
+          message: backoffState.message,
+          cause: {
+            cooldownRemainingMs: backoffState.cooldownRemainingMs,
+            captchaRequired: backoffState.captchaRequired,
+            failureCount: backoffState.failureCount,
+          },
         });
       }
+
+      // OTP verified — reset progressive backoff for this phone
+      otpBackoff.reset(e164);
 
       // Flip lead to phone_verified
       await setLeadPhoneVerified(leadId, e164, null);
