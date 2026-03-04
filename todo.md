@@ -127,3 +127,12 @@
 - [x] Replace setAnalysisPreviewFields with updateAnalysisPipelineResults in db.ts
 - [x] Fix AnalysisPreview.tsx: use preview.finalGrade, preview.overallScore, preview.findings
 - [x] Verify 0 TS errors
+
+## Vertex AI Migration
+- [x] Update analysisEngine.ts: vertexai: true, project: gen-lang-client-0516998301, location: global, model: gemini-3.1-flash-lite-preview
+- [x] Store GOOGLE_APPLICATION_CREDENTIALS_JSON as secret
+- [x] Create vertexAdc.ts: writes JSON to temp file, sets GOOGLE_APPLICATION_CREDENTIALS
+- [x] Bootstrap ADC in server/_core/index.ts before any Gemini client
+- [x] Remove apiKey from Vertex AI client (mutually exclusive with ADC)
+- [x] Re-run Vitest: 35/35 pass, Gemini returns OK
+- [ ] Save checkpoint
