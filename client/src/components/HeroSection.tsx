@@ -1,11 +1,10 @@
 import { ASSETS } from "@/lib/assets";
 import { useInView } from "@/hooks/useInView";
-import { useCountUp } from "@/hooks/useCountUp";
-import { ArrowDown, Zap } from "lucide-react";
+import { ArrowDown } from "lucide-react";
+import { UrgencyTicker } from "@/components/UrgencyTicker";
 
 export function HeroSection() {
   const { ref, isInView } = useInView(0.1);
-  const homeownerCount = useCountUp(4127, 2000, isInView);
 
   return (
     <section
@@ -25,19 +24,10 @@ export function HeroSection() {
 
       {/* Content */}
       <div className="relative z-10 container max-w-5xl text-center">
-        {/* Urgency Pill */}
-        <div
-          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full mb-8 animate-pulse-border transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-          style={{
-            background: "rgba(0,217,255,0.06)",
-            border: "1px solid rgba(0,217,255,0.3)",
-          }}
-        >
-          <Zap className="w-4 h-4 text-[#00D9FF]" />
-          <span className="font-[var(--font-mono)] text-sm text-[#00D9FF]">
-            <span className="font-bold">{homeownerCount.toLocaleString()}</span> homeowners in your county have already secured fair-priced quotes
-          </span>
-        </div>
+        {/* Urgency Ticker */}
+        <UrgencyTicker
+          className={`mb-8 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+        />
 
         {/* Main Headline */}
         <h1
