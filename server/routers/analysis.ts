@@ -34,6 +34,7 @@ import {
   consumeEmailVerification,
   logLeadEvent,
   createLeadSession,
+  getAnalysisByHash,
 } from "../db";
 import { sendMagicLinkEmail } from "../email";
 import { twilioClient } from "../twilio";
@@ -124,6 +125,29 @@ export const analysisRouter = router({
 
       // SHA-256 dedup check
       const fileHash = hashFileBytes(fileBuffer);
+      // Check for duplicate upload (same file bytes already analyzed)
+      const existingAnalysis = await getAnalysisByHash(fileHash).catch(() => null);
+      if (existingAnalysis && existingAnalysis.status !== "failed" && existingAnalysis.status !== "purged") {
+        // Log dedup hit event if a lead is attached to the existing analysis
+        if (existingAnalysis.leadId) {
+          await logLeadEvent({
+            id: randomUUID(),
+            leadId: existingAnalysis.leadId,
+            analysisId: existingAnalysis.id,
+            eventName: "wm_scanner_dedup_hit",
+            eventId: `${existingAnalysis.leadId}_wm_scanner_dedup_hit_${existingAnalysis.id}`,
+            source: "server",
+            payload: { fileHash, existingAnalysisId: existingAnalysis.id, status: existingAnalysis.status },
+          }).catch(() => {});
+        }
+        console.log(`[Pipeline] Dedup hit: returning existing analysis ${existingAnalysis.id} for hash ${fileHash.slice(0, 8)}...`);
+        return {
+          analysisId: existingAnalysis.id,
+          tempSessionId: existingAnalysis.tempSessionId ?? generateToken(16),
+          status: existingAnalysis.status as "processing",
+          dedupHit: true,
+        };
+      }
 
       // Upload to S3 temp/
       const tempSessionId = generateToken(16);
@@ -177,11 +201,42 @@ export const analysisRouter = router({
           });
 
           console.log(`[Pipeline] Analysis ${analysisId} completed successfully.`);
+          // Observability: log scanner_analysis_completed event if lead is attached
+          const completedAnalysis = await getAnalysisById(analysisId).catch(() => null);
+          if (completedAnalysis?.leadId) {
+            await logLeadEvent({
+              id: randomUUID(),
+              leadId: completedAnalysis.leadId,
+              analysisId,
+              eventName: "wm_scanner_analysis_completed",
+              eventId: `${completedAnalysis.leadId}_wm_scanner_analysis_completed_${analysisId}`,
+              source: "server",
+              payload: {
+                rubricVersion: BRAIN_VERSION,
+                overallScore: result.preview?.overallScore ?? null,
+                finalGrade: result.preview?.finalGrade ?? null,
+                riskLevel: result.preview?.riskLevel ?? null,
+              },
+            }).catch(() => {});
+          }
         })
         .catch(async (err) => {
           const errorCode = err instanceof AnalysisEngineError ? err.code : "UNKNOWN";
           console.error(`[Pipeline] Analysis ${analysisId} failed:`, err);
           await markAnalysisFailed(analysisId, errorCode).catch(() => {});
+          // Observability: log scanner_analysis_failed event if lead is attached
+          const failedAnalysis = await getAnalysisById(analysisId).catch(() => null);
+          if (failedAnalysis?.leadId) {
+            await logLeadEvent({
+              id: randomUUID(),
+              leadId: failedAnalysis.leadId,
+              analysisId,
+              eventName: "wm_scanner_analysis_failed",
+              eventId: `${failedAnalysis.leadId}_wm_scanner_analysis_failed_${analysisId}`,
+              source: "server",
+              payload: { errorCode, rubricVersion: BRAIN_VERSION },
+            }).catch(() => {});
+          }
         });
 
       return {
@@ -209,6 +264,8 @@ export const analysisRouter = router({
       return {
         analysisId: analysis.id,
         status: analysis.status,
+        /** Error code when status='failed' — e.g. NOT_A_QUOTE, GEMINI_TIMEOUT, etc. */
+        errorCode: analysis.errorCode ?? null,
         preview: analysis.status === "processing" ? null : preview,
         /** Scan summary for the animation — only available after pipeline completes */
         scanSummary: preview

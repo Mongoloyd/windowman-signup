@@ -393,3 +393,20 @@ export async function getLeadCallsByLeadId(leadId: string): Promise<LeadCall[]> 
     .where(eq(leadCalls.leadId, leadId))
     .orderBy(desc(leadCalls.createdAt));
 }
+
+/**
+ * Find an existing analysis by file hash (SHA-256).
+ * Used for dedup detection — returns the most recent non-failed, non-purged match.
+ */
+export async function getAnalysisByHash(fileHash: string): Promise<Analysis | undefined> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.fileHash, fileHash))
+    .orderBy(desc(analyses.createdAt))
+    .limit(1);
+  // Return the first match regardless of status — caller decides whether to reuse
+  return result[0];
+}

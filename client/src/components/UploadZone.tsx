@@ -31,7 +31,8 @@ type FunnelState =
   | "partial_preview"
   | "otp_gate"
   | "full_analysis"
-  | "purged";
+  | "purged"
+  | "not_a_quote";
 
 interface PreviewData {
   score: number | null;
@@ -186,13 +187,61 @@ export function UploadZone() {
 
   // ── tRPC mutations ──────────────────────────────────────────────────────────
 
+  // ── Pipeline status polling ──────────────────────────────────────────────────
+  // Polls getStatus every 3s while in 'analyzing' state.
+  // Transitions to email_gate on success, not_a_quote on D-001 gate, idle on other failures.
+  const utils = trpc.useUtils();
+  useEffect(() => {
+    if (state !== "analyzing" || !analysisData?.analysisId) return;
+    let cancelled = false;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const result = await utils.analysis.getStatus.fetch({ analysisId: analysisData.analysisId });
+        if (cancelled) return;
+        if (result.status === "processing") {
+          // Still running — poll again in 3s
+          setTimeout(poll, 3000);
+        } else if (result.status === "failed") {
+          if (result.errorCode === "NOT_A_QUOTE") {
+            setState("not_a_quote");
+          } else {
+            toast.error("Analysis failed. Please try again.");
+            setState("idle");
+          }
+        } else {
+          // temp, persisted_email_verified, full_unlocked — pipeline done
+          setState("email_gate");
+        }
+      } catch {
+        if (!cancelled) {
+          // On poll error, fall through to email_gate after a short delay
+          setTimeout(() => { if (!cancelled) setState("email_gate"); }, 2000);
+        }
+      }
+    };
+    // Start first poll after 3s (give pipeline time to start)
+    const t = setTimeout(poll, 3000);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [state, analysisData?.analysisId, utils.analysis.getStatus]);
+
   const uploadMutation = trpc.analysis.upload.useMutation({
     onSuccess: (data) => {
       setAnalysisData({ analysisId: data.analysisId, tempSessionId: data.tempSessionId });
       setState("analyzing");
-      setTimeout(() => setState("email_gate"), 3500);
+      // Polling loop (above useEffect) will handle the transition to email_gate or not_a_quote
     },
     onError: (err) => {
+      // D-001: Intercept NOT_A_QUOTE before showing generic error
+      const isNotAQuote =
+        err.message?.includes("NOT_A_QUOTE") ||
+        (err.data as { code?: string } | undefined)?.code === "NOT_A_QUOTE" ||
+        err.message?.toLowerCase().includes("not a window") ||
+        err.message?.toLowerCase().includes("not a quote");
+      if (isNotAQuote) {
+        setState("not_a_quote");
+        return;
+      }
       toast.error(err.message || "Upload failed. Please try again.");
       setState("idle");
     },
@@ -373,6 +422,30 @@ export function UploadZone() {
             <Loader2 className="w-10 h-10 text-[#00D9FF] animate-spin mx-auto mb-4" />
             <p className="text-white font-semibold text-lg mb-2">Uploading your quote...</p>
             <p className="text-slate-400 text-sm">{file?.name}</p>
+          </div>
+        )}
+
+        {/* ── STATE: not_a_quote ── */}
+        {state === "not_a_quote" && (
+          <div className="rounded-2xl p-10 text-center" style={{ background: "rgba(15,20,25,0.8)", border: "1px solid rgba(251,191,36,0.3)" }}>
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6" style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)" }}>
+              <AlertTriangle className="w-8 h-8 text-amber-400" />
+            </div>
+            <h3 className="text-white font-bold text-xl mb-3">That doesn't look like a quote</h3>
+            <p className="text-slate-300 text-base mb-2">
+              Upload a window or door quote or contract.
+            </p>
+            <p className="text-slate-500 text-sm mb-8 font-mono">
+              We analyze window &amp; door replacement quotes only — PDFs, photos, or scans of contractor estimates.
+            </p>
+            <button
+              onClick={() => { setState("idle"); setFile(null); }}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-[#0F1419] transition-all duration-300 hover:scale-105"
+              style={{ background: "#00D9FF", boxShadow: "0 0 20px rgba(0,217,255,0.3)" }}
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try a Different File
+            </button>
           </div>
         )}
 

@@ -9,7 +9,8 @@
  * Safe to run multiple times (idempotent).
  */
 
-import { getExpiredTempAnalyses, markAnalysisPurged, deleteExpiredEmailVerifications } from "./db";
+import { getExpiredTempAnalyses, markAnalysisPurged, deleteExpiredEmailVerifications, logLeadEvent } from "./db";
+import { randomUUID } from "crypto";
 
 // Lazy import to avoid circular deps at startup
 async function getStorageDelete() {
@@ -56,6 +57,18 @@ export async function runPurgeJob(): Promise<{
         await markAnalysisPurged(analysis.id);
         purgedFiles++;
         console.log(`[Purge] Marked analysis ${analysis.id} as purged.`);
+        // Observability: log scanner_purged event if a lead is attached
+        if (analysis.leadId) {
+          await logLeadEvent({
+            id: randomUUID(),
+            leadId: analysis.leadId,
+            analysisId: analysis.id,
+            eventName: "wm_scanner_purged",
+            eventId: `${analysis.leadId}_wm_scanner_purged_${analysis.id}`,
+            source: "server",
+            payload: { status: analysis.status, purgedAt: new Date().toISOString() },
+          }).catch(() => {});
+        }
       } catch (err: any) {
         const msg = `Failed to purge analysis ${analysis.id}: ${err.message}`;
         errors.push(msg);

@@ -111,10 +111,10 @@
 - [x] Implement GET /analysis/:id with identity-gated response stripping (public/email/phone tiers)
 ### Deliverable 5: TTL Purge + Observability
 - [x] Update purge job for new status enum (processing + temp)
-- [ ] Emit scanner_analysis_completed, scanner_purged, scanner_dedup_hit events (deferred — observability pass)
+- [x] Emit scanner_analysis_completed, scanner_purged, scanner_dedup_hit, scanner_analysis_failed events
 ### Tests
 - [x] Vitest: scanner-brain pure logic (scoring, preview censor-greens, rounding, bucketing) — 5 acceptance tests pass
-- [ ] Vitest: access ladder security (no preview leak, no full leak)
+- [x] Vitest: access ladder security (no preview leak, no full leak) — 20 tests pass
 - [ ] Vitest: dedup logic
 
 ## TS Error Fix: previewJson migration
@@ -163,3 +163,8 @@
 - [x] Flag Ordering test
 - [x] Score Rounding test
 - [x] Zero Findings test
+
+## D-001 Gate Frontend Wiring + E2E Test 2
+- [x] Wire NOT_A_QUOTE error code into upload mutation error handler
+- [x] Show not_a_quote UI state (amber warning, "That doesn't look like a quote", Try Different File CTA)
+- [x] E2E Test 2: upload grocery receipt, verified NOT_A_QUOTE in 2 polls, screenshot captured
