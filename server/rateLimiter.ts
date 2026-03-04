@@ -1,5 +1,5 @@
 /**
- * In-memory sliding-window rate limiter for OTP sends.
+ * In-memory sliding-window rate limiter for Twilio API calls (OTP sends + Lookup v2).
  *
  * Enforces: max N requests per key within a rolling window of W milliseconds.
  * Each key (e.g. E.164 phone number) maintains a list of timestamps.
@@ -110,5 +110,16 @@ export class SlidingWindowRateLimiter {
  */
 export const otpRateLimiter = new SlidingWindowRateLimiter({
   maxRequests: 5,
+  windowMs: 10 * 60 * 1000, // 10 minutes
+});
+
+// ─── Singleton instance for Lookup v2 rate limiting ─────────────────────────
+
+/**
+ * Lookup rate limiter: max 10 lookups per phone number per 10-minute window.
+ * Prevents Twilio Lookup v2 billing abuse (each lookup costs ~$0.01-$0.05).
+ */
+export const lookupRateLimiter = new SlidingWindowRateLimiter({
+  maxRequests: 10,
   windowMs: 10 * 60 * 1000, // 10 minutes
 });

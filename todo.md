@@ -173,3 +173,8 @@
 - [x] Implement in-memory rate limiter (max 5 OTP sends per phone per 10 min window)
 - [x] Wire rate limiter into analysis.sendPhoneOTP procedure (throw TOO_MANY_REQUESTS)
 - [x] Write Vitest test: simulate 6 rapid requests, assert 6th is blocked with 429 — 12 tests pass
+
+## Lookup Phone Rate Limiting (Twilio Lookup v2 Billing Protection)
+- [x] Add lookupRateLimiter singleton (max 10 per phone per 10 min window)
+- [x] Wire rate limiter into analysis.lookupPhone procedure (throw TOO_MANY_REQUESTS)
+- [x] Write Vitest test: simulate 11 rapid requests, assert 11th is blocked — 4 tests pass

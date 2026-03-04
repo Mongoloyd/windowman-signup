@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { SlidingWindowRateLimiter, otpRateLimiter } from "./rateLimiter";
+import { SlidingWindowRateLimiter, otpRateLimiter, lookupRateLimiter } from "./rateLimiter";
 
 // ─── Unit tests for SlidingWindowRateLimiter ─────────────────────────────────
 
@@ -224,5 +224,84 @@ describe("otpRateLimiter singleton", () => {
     const expectedMessage = "Too many attempts. Please try again in 10 minutes.";
     expect(expectedMessage).toBe("Too many attempts. Please try again in 10 minutes.");
     expect(expectedMessage).toContain("10 minutes");
+  });
+});
+
+// ─── lookupRateLimiter singleton tests ─────────────────────────────────────────
+
+describe("lookupRateLimiter singleton", () => {
+  beforeEach(() => {
+    lookupRateLimiter.clearAll();
+  });
+
+  it("is configured with max 10 requests per 10-minute window", () => {
+    const phone = "+13055551234";
+    const now = Date.now();
+
+    // Should allow exactly 10
+    for (let i = 0; i < 10; i++) {
+      const result = lookupRateLimiter.check(phone, now + i);
+      expect(result.allowed, `Lookup request ${i + 1} should be allowed`).toBe(true);
+    }
+
+    // 11th should be blocked
+    const blocked = lookupRateLimiter.check(phone, now + 10);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.remaining).toBe(0);
+  });
+
+  it("simulates 11 rapid lookup requests — 11th is blocked", () => {
+    const phone = "+13055558888";
+    const baseTime = 1700000000000;
+    const results: Array<{ index: number; allowed: boolean; remaining: number }> = [];
+
+    for (let i = 0; i < 11; i++) {
+      const result = lookupRateLimiter.check(phone, baseTime + i * 50); // 50ms apart
+      results.push({ index: i + 1, allowed: result.allowed, remaining: result.remaining });
+    }
+
+    // Requests 1-10 should be allowed
+    for (let i = 0; i < 10; i++) {
+      expect(results[i].allowed, `Lookup ${i + 1} should be allowed`).toBe(true);
+      expect(results[i].remaining).toBe(9 - i);
+    }
+
+    // Request 11 must be BLOCKED
+    expect(results[10].allowed, "Lookup 11 must be BLOCKED").toBe(false);
+    expect(results[10].remaining, "Lookup 11 remaining must be 0").toBe(0);
+  });
+
+  it("lookup and OTP rate limiters are independent", () => {
+    const phone = "+13055551234";
+    const now = Date.now();
+
+    // Exhaust lookup limit (10)
+    for (let i = 0; i < 10; i++) {
+      lookupRateLimiter.check(phone, now + i);
+    }
+    expect(lookupRateLimiter.check(phone, now + 10).allowed).toBe(false);
+
+    // OTP limiter should still be available for the same phone
+    otpRateLimiter.clearAll();
+    const otpResult = otpRateLimiter.check(phone, now + 11);
+    expect(otpResult.allowed, "OTP should still be allowed when lookup is exhausted").toBe(true);
+    expect(otpResult.remaining).toBe(4);
+  });
+
+  it("blocked lookup returns retryAfterMs in the future", () => {
+    const phone = "+13055551234";
+    const baseTime = 1700000000000;
+
+    // Exhaust the limit
+    for (let i = 0; i < 10; i++) {
+      lookupRateLimiter.check(phone, baseTime + i * 1000);
+    }
+
+    // 11th request blocked
+    const blocked = lookupRateLimiter.check(phone, baseTime + 10000);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.retryAfterMs).toBeGreaterThan(baseTime);
+    // retryAfterMs should be the first entry's timestamp + windowMs
+    expect(blocked.retryAfterMs).toBe(baseTime + 10 * 60 * 1000);
   });
 });
