@@ -216,3 +216,12 @@
 - [x] Add setLeadFraud DB helper; also flags existing leads that re-submit with honeypot filled
 - [x] Log wm_honeypot_triggered lead_event for observability
 - [x] Write 17 Vitest tests: detection logic, schema validation, silent success contract — 116/116 total
+
+## Honeypot Flow A + isFraud Pixel Guard
+- [x] Add CSS-hidden honeypot input to UploadZone email step (Flow A)
+- [x] Pass honeypot value in requestEmailVerification mutation from UploadZone
+- [x] Create client/src/lib/pixels.ts with isFraud-aware wrappers for fbq, gtag, dataLayer, hashPii
+- [x] Add isFraud to verifyPhoneOTP server response (reads from lead DB record)
+- [x] Wire firePhoneVerifiedConversion into verifyPhoneOTP onSuccess in UploadZone and AnalysisPreview
+- [x] Write 25 Vitest tests for isFraud pixel guard (Meta, Google, GTM, edge cases, server contract)
+- [x] Fix promptInjection.ts Variant 2/3/4 regex gaps — 141/141 total tests now passing

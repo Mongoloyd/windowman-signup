@@ -26,6 +26,7 @@ import {
   Clock, AlertOctagon
 } from "lucide-react";
 import { useOtpCooldown } from "@/hooks/useOtpCooldown";
+import { firePhoneVerifiedConversion, hashPii } from "@/lib/pixels";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -327,11 +328,21 @@ export default function AnalysisPreview() {
   });
 
   const verifyOTPMutation = trpc.analysis.verifyPhoneOTP.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       otpCooldown.clearCooldown();
       setFullAnalysis(data.fullAnalysis as unknown as FullAnalysis);
       setPageState("full_analysis");
       toast.success("Phone verified! Full analysis unlocked.");
+      // Fire conversion pixels — guarded by isFraud flag from server
+      try {
+        const hashedPhone = e164Phone ? await hashPii(e164Phone) : undefined;
+        firePhoneVerifiedConversion(
+          { ph: hashedPhone, leadId: data.leadId, eventId: crypto.randomUUID() },
+          { isFraud: data.isFraud }
+        );
+      } catch {
+        // Pixel fires are non-critical — never block the UX
+      }
     },
     onError: (err) => {
       // Extract progressive backoff data from the custom errorFormatter (server/_core/trpc.ts)
