@@ -5,6 +5,27 @@ import type { TrpcContext } from "./context";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  errorFormatter({ shape, error }) {
+    // Forward progressive backoff data from TRPCError cause to the client.
+    // The cause object is server-side only by default; we surface it here
+    // so the frontend can render countdown timers and CAPTCHA prompts.
+    const cause = error.cause as
+      | { cooldownRemainingMs?: number; captchaRequired?: boolean; failureCount?: number }
+      | undefined;
+    return {
+      ...shape,
+      data: {
+        ...shape.data,
+        backoff: cause?.cooldownRemainingMs !== undefined
+          ? {
+              cooldownRemainingMs: cause.cooldownRemainingMs,
+              captchaRequired: cause.captchaRequired ?? false,
+              failureCount: cause.failureCount ?? 0,
+            }
+          : undefined,
+      },
+    };
+  },
 });
 
 export const router = t.router;

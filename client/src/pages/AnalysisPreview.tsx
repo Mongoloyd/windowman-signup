@@ -22,8 +22,10 @@ import {
   Shield, FileSearch, Scale, FileText, Award,
   CheckCircle2, AlertTriangle, AlertCircle,
   Phone, Loader2, RefreshCw, ArrowLeft, Lock,
-  Unlock, Star, TrendingDown, ChevronRight, ExternalLink
+  Unlock, Star, TrendingDown, ChevronRight, ExternalLink,
+  Clock, AlertOctagon
 } from "lucide-react";
+import { useOtpCooldown } from "@/hooks/useOtpCooldown";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -222,6 +224,7 @@ export default function AnalysisPreview() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [fullAnalysis, setFullAnalysis] = useState<FullAnalysis | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const otpCooldown = useOtpCooldown();
 
   // Resend cooldown timer
   useEffect(() => {
@@ -300,11 +303,25 @@ export default function AnalysisPreview() {
 
   const verifyOTPMutation = trpc.analysis.verifyPhoneOTP.useMutation({
     onSuccess: (data) => {
+      otpCooldown.clearCooldown();
       setFullAnalysis(data.fullAnalysis as unknown as FullAnalysis);
       setPageState("full_analysis");
       toast.success("Phone verified! Full analysis unlocked.");
     },
-    onError: (err) => toast.error(err.message || "Incorrect code. Please try again."),
+    onError: (err) => {
+      // Extract progressive backoff data from the custom errorFormatter (server/_core/trpc.ts)
+      // The formatter forwards cause.cooldownRemainingMs and cause.captchaRequired into err.data.backoff
+      const backoff = (err.data as { backoff?: { cooldownRemainingMs?: number; captchaRequired?: boolean } } | undefined)?.backoff;
+      const cooldownMs = backoff?.cooldownRemainingMs ?? 0;
+      const captcha = backoff?.captchaRequired ?? false;
+      if (cooldownMs > 0) {
+        otpCooldown.startCooldown(cooldownMs, captcha);
+      }
+      // Don't toast when countdown is shown — the inline UI provides the feedback
+      if (cooldownMs === 0) {
+        toast.error(err.message || "Incorrect code. Please try again.");
+      }
+    },
   });
 
   const handlePhoneSubmit = () => {
@@ -540,13 +557,51 @@ export default function AnalysisPreview() {
 
                       <OTPInput
                         onComplete={handleOTPComplete}
-                        disabled={verifyOTPMutation.isPending}
+                        disabled={verifyOTPMutation.isPending || otpCooldown.isBlocked}
                       />
 
                       {verifyOTPMutation.isPending && (
                         <div className="flex items-center justify-center gap-2 mt-4">
                           <Loader2 className="w-4 h-4 animate-spin text-[#00D9FF]" />
                           <span className="text-sm text-slate-400">Verifying...</span>
+                        </div>
+                      )}
+
+                      {/* Progressive backoff countdown */}
+                      {otpCooldown.isBlocked && (
+                        <div
+                          className="mt-4 rounded-xl px-4 py-3 flex flex-col gap-2"
+                          style={{
+                            background: otpCooldown.captchaRequired
+                              ? "rgba(239,68,68,0.08)"
+                              : "rgba(251,191,36,0.08)",
+                            border: `1px solid ${otpCooldown.captchaRequired ? "rgba(239,68,68,0.25)" : "rgba(251,191,36,0.25)"}`,
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            {otpCooldown.captchaRequired ? (
+                              <AlertOctagon className="w-4 h-4 text-red-400 shrink-0" />
+                            ) : (
+                              <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                            )}
+                            <span
+                              className="text-sm font-semibold"
+                              style={{ color: otpCooldown.captchaRequired ? "#f87171" : "#fbbf24" }}
+                            >
+                              Too many attempts
+                            </span>
+                            <span
+                              className="ml-auto text-sm font-mono font-bold tabular-nums"
+                              style={{ color: otpCooldown.captchaRequired ? "#f87171" : "#fbbf24" }}
+                            >
+                              {otpCooldown.formattedTime}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            {otpCooldown.captchaRequired
+                              ? "Your account is temporarily locked. Please wait, then complete a verification challenge."
+                              : "Please wait before trying again."}
+                          </p>
                         </div>
                       )}
 

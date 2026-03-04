@@ -191,3 +191,11 @@
 - [x] Return cooldownMs and captchaRequired in TOO_MANY_REQUESTS/BAD_REQUEST error cause
 - [x] Reset backoff on successful OTP verification
 - [x] Write Vitest tests for all 4 escalation tiers + reset + brute-force simulation — 12 tests pass
+
+## OTP Countdown Timer (Frontend UX)
+- [x] Create useOtpCooldown hook (reads cooldownRemainingMs, ticks every second, returns secondsLeft + captchaRequired)
+- [x] Add custom tRPC errorFormatter to forward backoff data from server cause to client err.data.backoff
+- [x] Wire hook into OTP verification UI — disable submit button during cooldown
+- [x] Show live countdown banner: amber (tiers 2-3) / red (tier 4) with formatted time ("30s", "1:45")
+- [x] Show CAPTCHA warning banner when captchaRequired is true (tier 4) with AlertOctagon icon
+- [x] Clear countdown on successful verification
