@@ -39,7 +39,7 @@ import type {
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
 const TIMEOUT_MS = 90_000; // 90 seconds
 
 // ─── Error class ─────────────────────────────────────────────────────────────
