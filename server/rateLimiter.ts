@@ -123,3 +123,35 @@ export const lookupRateLimiter = new SlidingWindowRateLimiter({
   maxRequests: 10,
   windowMs: 10 * 60 * 1000, // 10 minutes
 });
+
+// ─── Singleton instance for IP-based rate limiting (defense-in-depth) ────────
+
+/**
+ * IP rate limiter: max 20 combined Twilio calls (lookup + OTP) per IP per 10-minute window.
+ * Prevents bot rotation attacks where different phone numbers are tried from the same IP.
+ * This is checked BEFORE the per-phone limiters.
+ */
+export const ipRateLimiter = new SlidingWindowRateLimiter({
+  maxRequests: 20,
+  windowMs: 10 * 60 * 1000, // 10 minutes
+});
+
+// ─── Helper: extract client IP from Express request ─────────────────────────
+
+/**
+ * Extract the client IP from an Express request.
+ * Respects x-forwarded-for (first entry) for reverse-proxy deployments,
+ * falls back to req.ip or req.socket.remoteAddress.
+ */
+export function getClientIp(req: {
+  headers?: Record<string, string | string[] | undefined>;
+  ip?: string;
+  socket?: { remoteAddress?: string };
+}): string {
+  const forwarded = req.headers?.["x-forwarded-for"];
+  if (forwarded) {
+    const first = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
+    return first.trim();
+  }
+  return req.ip ?? req.socket?.remoteAddress ?? "unknown";
+}

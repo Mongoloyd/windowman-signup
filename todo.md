@@ -178,3 +178,9 @@
 - [x] Add lookupRateLimiter singleton (max 10 per phone per 10 min window)
 - [x] Wire rate limiter into analysis.lookupPhone procedure (throw TOO_MANY_REQUESTS)
 - [x] Write Vitest test: simulate 11 rapid requests, assert 11th is blocked — 4 tests pass
+
+## IP-Based Rate Limiting (Defense-in-Depth)
+- [x] Add ipRateLimiter singleton (max 20 Twilio calls per IP per 10 min window)
+- [x] Add getClientIp helper (x-forwarded-for → req.ip → socket.remoteAddress → "unknown")
+- [x] Wire IP rate limiter into lookupPhone and sendPhoneOTP (checked before per-phone limiter)
+- [x] Write Vitest test: 21 requests from same IP with different phones, 21st blocked — 11 tests pass

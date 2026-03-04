@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { SlidingWindowRateLimiter, otpRateLimiter, lookupRateLimiter } from "./rateLimiter";
+import { SlidingWindowRateLimiter, otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp } from "./rateLimiter";
 
 // ─── Unit tests for SlidingWindowRateLimiter ─────────────────────────────────
 
@@ -303,5 +303,146 @@ describe("lookupRateLimiter singleton", () => {
     expect(blocked.retryAfterMs).toBeGreaterThan(baseTime);
     // retryAfterMs should be the first entry's timestamp + windowMs
     expect(blocked.retryAfterMs).toBe(baseTime + 10 * 60 * 1000);
+  });
+});
+
+// ─── ipRateLimiter singleton tests (defense-in-depth) ────────────────────────
+
+describe("ipRateLimiter singleton", () => {
+  beforeEach(() => {
+    ipRateLimiter.clearAll();
+  });
+
+  it("is configured with max 20 requests per 10-minute window", () => {
+    const ip = "192.168.1.100";
+    const now = Date.now();
+
+    // Should allow exactly 20
+    for (let i = 0; i < 20; i++) {
+      const result = ipRateLimiter.check(ip, now + i);
+      expect(result.allowed, `IP request ${i + 1} should be allowed`).toBe(true);
+    }
+
+    // 21st should be blocked
+    const blocked = ipRateLimiter.check(ip, now + 20);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.remaining).toBe(0);
+  });
+
+  it("simulates 21 requests from same IP with different phone numbers — 21st is blocked", () => {
+    const ip = "10.0.0.42";
+    const baseTime = 1700000000000;
+    const results: Array<{ index: number; phone: string; allowed: boolean; remaining: number }> = [];
+
+    for (let i = 0; i < 21; i++) {
+      // Each request uses a DIFFERENT phone number (bot rotation attack)
+      const phone = `+1305555${String(1000 + i)}`;
+      const result = ipRateLimiter.check(ip, baseTime + i * 100);
+      results.push({ index: i + 1, phone, allowed: result.allowed, remaining: result.remaining });
+    }
+
+    // Requests 1-20 should be allowed
+    for (let i = 0; i < 20; i++) {
+      expect(results[i].allowed, `Request ${i + 1} from IP should be allowed`).toBe(true);
+      expect(results[i].remaining).toBe(19 - i);
+    }
+
+    // Request 21 must be BLOCKED (even though it's a new phone number)
+    expect(results[20].allowed, "Request 21 from same IP must be BLOCKED").toBe(false);
+    expect(results[20].remaining, "Request 21 remaining must be 0").toBe(0);
+  });
+
+  it("different IPs are tracked independently", () => {
+    const ip1 = "192.168.1.1";
+    const ip2 = "10.0.0.1";
+    const now = Date.now();
+
+    // Exhaust ip1's limit
+    for (let i = 0; i < 20; i++) {
+      ipRateLimiter.check(ip1, now + i);
+    }
+    expect(ipRateLimiter.check(ip1, now + 20).allowed).toBe(false);
+
+    // ip2 should still be allowed
+    const result = ipRateLimiter.check(ip2, now + 21);
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(19);
+  });
+
+  it("IP limiter is independent from per-phone OTP and lookup limiters", () => {
+    const ip = "172.16.0.1";
+    const phone = "+13055551234";
+    const now = Date.now();
+
+    // Exhaust IP limit
+    for (let i = 0; i < 20; i++) {
+      ipRateLimiter.check(ip, now + i);
+    }
+    expect(ipRateLimiter.check(ip, now + 20).allowed).toBe(false);
+
+    // Per-phone limiters should still be available
+    otpRateLimiter.clearAll();
+    lookupRateLimiter.clearAll();
+    expect(otpRateLimiter.check(phone, now + 21).allowed).toBe(true);
+    expect(lookupRateLimiter.check(phone, now + 22).allowed).toBe(true);
+  });
+
+  it("blocked IP returns retryAfterMs in the future", () => {
+    const ip = "192.168.1.100";
+    const baseTime = 1700000000000;
+
+    for (let i = 0; i < 20; i++) {
+      ipRateLimiter.check(ip, baseTime + i * 500);
+    }
+
+    const blocked = ipRateLimiter.check(ip, baseTime + 10000);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.retryAfterMs).toBe(baseTime + 10 * 60 * 1000);
+  });
+});
+
+// ─── getClientIp helper tests ─────────────────────────────────────────────
+
+describe("getClientIp helper", () => {
+  it("extracts IP from x-forwarded-for header (single value)", () => {
+    const ip = getClientIp({
+      headers: { "x-forwarded-for": "203.0.113.50" },
+    });
+    expect(ip).toBe("203.0.113.50");
+  });
+
+  it("extracts first IP from x-forwarded-for chain", () => {
+    const ip = getClientIp({
+      headers: { "x-forwarded-for": "203.0.113.50, 70.41.3.18, 150.172.238.178" },
+    });
+    expect(ip).toBe("203.0.113.50");
+  });
+
+  it("extracts first IP from x-forwarded-for array", () => {
+    const ip = getClientIp({
+      headers: { "x-forwarded-for": ["198.51.100.1", "70.41.3.18"] },
+    });
+    expect(ip).toBe("198.51.100.1");
+  });
+
+  it("falls back to req.ip when no x-forwarded-for", () => {
+    const ip = getClientIp({
+      headers: {},
+      ip: "127.0.0.1",
+    });
+    expect(ip).toBe("127.0.0.1");
+  });
+
+  it("falls back to socket.remoteAddress when no req.ip", () => {
+    const ip = getClientIp({
+      headers: {},
+      socket: { remoteAddress: "::1" },
+    });
+    expect(ip).toBe("::1");
+  });
+
+  it("returns 'unknown' when no IP source is available", () => {
+    const ip = getClientIp({ headers: {} });
+    expect(ip).toBe("unknown");
   });
 });
