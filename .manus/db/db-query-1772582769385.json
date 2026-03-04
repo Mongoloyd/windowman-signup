@@ -1,0 +1,73 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'analyses' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 27uXEReyi2JBs58.ee1f7a6279f6 --database QkvsDE9FRrFndBys6dgpY4 --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'analyses' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "lead_id"
+    },
+    {
+      "COLUMN_NAME": "temp_session_id"
+    },
+    {
+      "COLUMN_NAME": "file_url"
+    },
+    {
+      "COLUMN_NAME": "file_name"
+    },
+    {
+      "COLUMN_NAME": "mime_type"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "error_code"
+    },
+    {
+      "COLUMN_NAME": "full_json"
+    },
+    {
+      "COLUMN_NAME": "preview_score"
+    },
+    {
+      "COLUMN_NAME": "preview_grade"
+    },
+    {
+      "COLUMN_NAME": "preview_findings"
+    },
+    {
+      "COLUMN_NAME": "pillar_statuses"
+    },
+    {
+      "COLUMN_NAME": "fb_submit_application_sent"
+    },
+    {
+      "COLUMN_NAME": "created_at"
+    },
+    {
+      "COLUMN_NAME": "updated_at"
+    },
+    {
+      "COLUMN_NAME": "lovable_envelope"
+    },
+    {
+      "COLUMN_NAME": "analysis_version"
+    },
+    {
+      "COLUMN_NAME": "trace_id"
+    },
+    {
+      "COLUMN_NAME": "preview_headline"
+    },
+    {
+      "COLUMN_NAME": "preview_risk_level"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nlead_id\ntemp_session_id\nfile_url\nfile_name\nmime_type\nstatus\nerror_code\nfull_json\npreview_score\npreview_grade\npreview_findings\npillar_statuses\nfb_submit_application_sent\ncreated_at\nupdated_at\nlovable_envelope\nanalysis_version\ntrace_id\npreview_headline\npreview_risk_level\n",
+  "stderr": "",
+  "execution_time_ms": 372
+}

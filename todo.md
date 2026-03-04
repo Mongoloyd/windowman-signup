@@ -78,3 +78,14 @@
 - [x] Register /verify-email route in server index
 - [x] Add /analysis/preview route to App.tsx router
 - [ ] Write Vitest tests for /verify-email route (deferred — integration test requires live DB)
+
+## Native Truth Engine (Task 1 + Task 2)
+- [x] Audit live DB vs schema.ts — found 5 orphaned columns
+- [x] Drop lovable_envelope, analysis_version, trace_id, preview_headline, preview_risk_level from analyses table
+- [x] Verify live DB matches schema.ts exactly (16 columns)
+- [x] Install @google/genai SDK (v1.43.0)
+- [x] Add GEMINI_API_KEY to ENV object in server/_core/env.ts
+- [x] Scaffold server/services/analysisEngine.ts with Zod schemas, AnalysisEngineError, rubric placeholder, and analyzeQuote() function
+- [ ] Inject extraction rubric and scoring math (awaiting product owner input)
+- [ ] Wire analysisEngine into analysis.upload tRPC procedure
+- [ ] Write Vitest tests for analysisEngine
