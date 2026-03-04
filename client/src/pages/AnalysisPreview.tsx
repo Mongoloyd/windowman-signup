@@ -22,8 +22,10 @@ import {
   Shield, FileSearch, Scale, FileText, Award,
   CheckCircle2, AlertTriangle, AlertCircle,
   Phone, Loader2, RefreshCw, ArrowLeft, Lock,
-  Unlock, Star, TrendingDown, ChevronRight, ExternalLink
+  Unlock, Star, TrendingDown, ChevronRight, ExternalLink,
+  Clock, AlertOctagon
 } from "lucide-react";
+import { useOtpCooldown } from "@/hooks/useOtpCooldown";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -222,6 +224,8 @@ export default function AnalysisPreview() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [fullAnalysis, setFullAnalysis] = useState<FullAnalysis | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const otpCooldown = useOtpCooldown();
+  const sendCodeCooldown = useOtpCooldown(); // separate instance for the Send Code / phone lookup path
 
   // Resend cooldown timer
   useEffect(() => {
@@ -282,29 +286,67 @@ export default function AnalysisPreview() {
 
   // ── tRPC mutations ──────────────────────────────────────────────────────────
 
+  // Helper to extract backoff data from any tRPC error
+  const extractBackoff = (err: unknown) => {
+    const data = (err as { data?: { backoff?: { cooldownRemainingMs?: number; captchaRequired?: boolean } } }).data;
+    return {
+      cooldownMs: data?.backoff?.cooldownRemainingMs ?? 0,
+      captcha: data?.backoff?.captchaRequired ?? false,
+    };
+  };
+
   const lookupMutation = trpc.analysis.lookupPhone.useMutation({
     onSuccess: (data) => {
       setE164Phone(data.e164);
       sendOTPMutation.mutate({ leadId: leadId!, phone: data.e164 });
     },
-    onError: (err) => toast.error(err.message || "Unable to verify phone number."),
+    onError: (err) => {
+      const { cooldownMs, captcha } = extractBackoff(err);
+      if (cooldownMs > 0) {
+        sendCodeCooldown.startCooldown(cooldownMs, captcha);
+      } else {
+        toast.error(err.message || "Unable to verify phone number.");
+      }
+    },
   });
 
   const sendOTPMutation = trpc.analysis.sendPhoneOTP.useMutation({
     onSuccess: () => {
+      sendCodeCooldown.clearCooldown();
       setPageState("otp_gate");
       setResendCooldown(30);
     },
-    onError: (err) => toast.error(err.message || "Failed to send code."),
+    onError: (err) => {
+      const { cooldownMs, captcha } = extractBackoff(err);
+      if (cooldownMs > 0) {
+        sendCodeCooldown.startCooldown(cooldownMs, captcha);
+      } else {
+        toast.error(err.message || "Failed to send code.");
+      }
+    },
   });
 
   const verifyOTPMutation = trpc.analysis.verifyPhoneOTP.useMutation({
     onSuccess: (data) => {
+      otpCooldown.clearCooldown();
       setFullAnalysis(data.fullAnalysis as unknown as FullAnalysis);
       setPageState("full_analysis");
       toast.success("Phone verified! Full analysis unlocked.");
     },
-    onError: (err) => toast.error(err.message || "Incorrect code. Please try again."),
+    onError: (err) => {
+      // Extract progressive backoff data from the custom errorFormatter (server/_core/trpc.ts)
+      // The formatter forwards cause.cooldownRemainingMs and cause.captchaRequired into err.data.backoff
+      const backoff = (err.data as { backoff?: { cooldownRemainingMs?: number; captchaRequired?: boolean } } | undefined)?.backoff;
+      const cooldownMs = backoff?.cooldownRemainingMs ?? 0;
+      const captcha = backoff?.captchaRequired ?? false;
+      if (cooldownMs > 0) {
+        otpCooldown.startCooldown(cooldownMs, captcha);
+      }
+      // Don't toast when countdown is shown — the inline UI provides the feedback
+      if (cooldownMs === 0) {
+        toast.error(err.message || "Incorrect code. Please try again.");
+      }
+    },
   });
 
   const handlePhoneSubmit = () => {
@@ -324,6 +366,7 @@ export default function AnalysisPreview() {
   };
 
   const isPhoneLoading = lookupMutation.isPending || sendOTPMutation.isPending;
+  const isSendCodeBlocked = sendCodeCooldown.isBlocked;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -467,7 +510,7 @@ export default function AnalysisPreview() {
                   <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-3">5-Pillar Analysis</p>
                   {PILLAR_CONFIG.map((pillar) => {
                     // Derive status from findings: if a finding matches this pillar, use its severity
-                    const finding = previewData.preview?.findings?.find((f: any) => f.pillar === pillar.label || f.pillar === pillar.key);
+                    const finding = previewData.preview?.findings?.find((f: any) => f.pillarKey === pillar.key || f.pillarLabel === pillar.label);
                     const status = finding ? (finding.severity === "flag" ? "fail" : "warn") : undefined;
                     return (
                       <PillarCard
@@ -518,13 +561,61 @@ export default function AnalysisPreview() {
                         />
                         <button
                           onClick={handlePhoneSubmit}
-                          disabled={!phone.trim() || isPhoneLoading}
-                          className="px-4 py-2.5 rounded-lg font-semibold text-[#0F1419] disabled:opacity-50 text-sm"
-                          style={{ background: "#00D9FF" }}
+                          disabled={!phone.trim() || isPhoneLoading || isSendCodeBlocked}
+                          className="px-4 py-2.5 rounded-lg font-semibold text-[#0F1419] disabled:opacity-50 text-sm whitespace-nowrap"
+                          style={{ background: isSendCodeBlocked ? "#64748b" : "#00D9FF" }}
                         >
-                          {isPhoneLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Code"}
+                          {isPhoneLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : isSendCodeBlocked ? (
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              {sendCodeCooldown.formattedTime}
+                            </span>
+                          ) : (
+                            "Send Code"
+                          )}
                         </button>
                       </div>
+
+                      {/* Send Code rate limit countdown banner */}
+                      {isSendCodeBlocked && (
+                        <div
+                          className="rounded-xl px-4 py-3 flex flex-col gap-1.5 mb-3"
+                          style={{
+                            background: sendCodeCooldown.captchaRequired
+                              ? "rgba(239,68,68,0.08)"
+                              : "rgba(251,191,36,0.08)",
+                            border: `1px solid ${sendCodeCooldown.captchaRequired ? "rgba(239,68,68,0.25)" : "rgba(251,191,36,0.25)"}`,
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            {sendCodeCooldown.captchaRequired ? (
+                              <AlertOctagon className="w-4 h-4 text-red-400 shrink-0" />
+                            ) : (
+                              <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                            )}
+                            <span
+                              className="text-sm font-semibold"
+                              style={{ color: sendCodeCooldown.captchaRequired ? "#f87171" : "#fbbf24" }}
+                            >
+                              Too many attempts
+                            </span>
+                            <span
+                              className="ml-auto text-sm font-mono font-bold tabular-nums"
+                              style={{ color: sendCodeCooldown.captchaRequired ? "#f87171" : "#fbbf24" }}
+                            >
+                              {sendCodeCooldown.formattedTime}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            {sendCodeCooldown.captchaRequired
+                              ? "Too many requests from this device. Please wait before trying again."
+                              : "Please wait before requesting another code."}
+                          </p>
+                        </div>
+                      )}
+
                       <p className="text-xs text-slate-600 text-center">Mobile numbers only. VOIP not accepted.</p>
                     </>
                   ) : (
@@ -540,13 +631,51 @@ export default function AnalysisPreview() {
 
                       <OTPInput
                         onComplete={handleOTPComplete}
-                        disabled={verifyOTPMutation.isPending}
+                        disabled={verifyOTPMutation.isPending || otpCooldown.isBlocked}
                       />
 
                       {verifyOTPMutation.isPending && (
                         <div className="flex items-center justify-center gap-2 mt-4">
                           <Loader2 className="w-4 h-4 animate-spin text-[#00D9FF]" />
                           <span className="text-sm text-slate-400">Verifying...</span>
+                        </div>
+                      )}
+
+                      {/* Progressive backoff countdown */}
+                      {otpCooldown.isBlocked && (
+                        <div
+                          className="mt-4 rounded-xl px-4 py-3 flex flex-col gap-2"
+                          style={{
+                            background: otpCooldown.captchaRequired
+                              ? "rgba(239,68,68,0.08)"
+                              : "rgba(251,191,36,0.08)",
+                            border: `1px solid ${otpCooldown.captchaRequired ? "rgba(239,68,68,0.25)" : "rgba(251,191,36,0.25)"}`,
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            {otpCooldown.captchaRequired ? (
+                              <AlertOctagon className="w-4 h-4 text-red-400 shrink-0" />
+                            ) : (
+                              <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                            )}
+                            <span
+                              className="text-sm font-semibold"
+                              style={{ color: otpCooldown.captchaRequired ? "#f87171" : "#fbbf24" }}
+                            >
+                              Too many attempts
+                            </span>
+                            <span
+                              className="ml-auto text-sm font-mono font-bold tabular-nums"
+                              style={{ color: otpCooldown.captchaRequired ? "#f87171" : "#fbbf24" }}
+                            >
+                              {otpCooldown.formattedTime}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            {otpCooldown.captchaRequired
+                              ? "Your account is temporarily locked. Please wait, then complete a verification challenge."
+                              : "Please wait before trying again."}
+                          </p>
                         </div>
                       )}
 
@@ -627,7 +756,7 @@ export default function AnalysisPreview() {
                 })
               ) : (
                 PILLAR_CONFIG.map((pillar) => {
-                  const finding = previewData?.preview?.findings?.find((f: any) => f.pillar === pillar.label || f.pillar === pillar.key);
+                  const finding = previewData?.preview?.findings?.find((f: any) => f.pillarKey === pillar.key || f.pillarLabel === pillar.label);
                   const status = finding ? (finding.severity === "flag" ? "fail" : "warn") : undefined;
                   return (
                     <PillarCard

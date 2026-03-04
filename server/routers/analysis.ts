@@ -34,6 +34,8 @@ import {
   consumeEmailVerification,
   logLeadEvent,
   createLeadSession,
+  getAnalysisByHash,
+  setLeadFraud,
 } from "../db";
 import { sendMagicLinkEmail } from "../email";
 import { twilioClient } from "../twilio";
@@ -41,6 +43,7 @@ import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
 import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/analysisEngine";
 import type { SafePreview } from "../scanner-brain";
+import { otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp, otpBackoff } from "../rateLimiter";
 
 const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID ?? "";
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "https://itswindowman.com";
@@ -124,6 +127,29 @@ export const analysisRouter = router({
 
       // SHA-256 dedup check
       const fileHash = hashFileBytes(fileBuffer);
+      // Check for duplicate upload (same file bytes already analyzed)
+      const existingAnalysis = await getAnalysisByHash(fileHash).catch(() => null);
+      if (existingAnalysis && existingAnalysis.status !== "failed" && existingAnalysis.status !== "purged") {
+        // Log dedup hit event if a lead is attached to the existing analysis
+        if (existingAnalysis.leadId) {
+          await logLeadEvent({
+            id: randomUUID(),
+            leadId: existingAnalysis.leadId,
+            analysisId: existingAnalysis.id,
+            eventName: "wm_scanner_dedup_hit",
+            eventId: `${existingAnalysis.leadId}_wm_scanner_dedup_hit_${existingAnalysis.id}`,
+            source: "server",
+            payload: { fileHash, existingAnalysisId: existingAnalysis.id, status: existingAnalysis.status },
+          }).catch(() => {});
+        }
+        console.log(`[Pipeline] Dedup hit: returning existing analysis ${existingAnalysis.id} for hash ${fileHash.slice(0, 8)}...`);
+        return {
+          analysisId: existingAnalysis.id,
+          tempSessionId: existingAnalysis.tempSessionId ?? generateToken(16),
+          status: existingAnalysis.status as "processing",
+          dedupHit: true,
+        };
+      }
 
       // Upload to S3 temp/
       const tempSessionId = generateToken(16);
@@ -177,11 +203,42 @@ export const analysisRouter = router({
           });
 
           console.log(`[Pipeline] Analysis ${analysisId} completed successfully.`);
+          // Observability: log scanner_analysis_completed event if lead is attached
+          const completedAnalysis = await getAnalysisById(analysisId).catch(() => null);
+          if (completedAnalysis?.leadId) {
+            await logLeadEvent({
+              id: randomUUID(),
+              leadId: completedAnalysis.leadId,
+              analysisId,
+              eventName: "wm_scanner_analysis_completed",
+              eventId: `${completedAnalysis.leadId}_wm_scanner_analysis_completed_${analysisId}`,
+              source: "server",
+              payload: {
+                rubricVersion: BRAIN_VERSION,
+                overallScore: result.preview?.overallScore ?? null,
+                finalGrade: result.preview?.finalGrade ?? null,
+                riskLevel: result.preview?.riskLevel ?? null,
+              },
+            }).catch(() => {});
+          }
         })
         .catch(async (err) => {
           const errorCode = err instanceof AnalysisEngineError ? err.code : "UNKNOWN";
           console.error(`[Pipeline] Analysis ${analysisId} failed:`, err);
           await markAnalysisFailed(analysisId, errorCode).catch(() => {});
+          // Observability: log scanner_analysis_failed event if lead is attached
+          const failedAnalysis = await getAnalysisById(analysisId).catch(() => null);
+          if (failedAnalysis?.leadId) {
+            await logLeadEvent({
+              id: randomUUID(),
+              leadId: failedAnalysis.leadId,
+              analysisId,
+              eventName: "wm_scanner_analysis_failed",
+              eventId: `${failedAnalysis.leadId}_wm_scanner_analysis_failed_${analysisId}`,
+              source: "server",
+              payload: { errorCode, rubricVersion: BRAIN_VERSION },
+            }).catch(() => {});
+          }
         });
 
       return {
@@ -209,6 +266,8 @@ export const analysisRouter = router({
       return {
         analysisId: analysis.id,
         status: analysis.status,
+        /** Error code when status='failed' — e.g. NOT_A_QUOTE, GEMINI_TIMEOUT, etc. */
+        errorCode: analysis.errorCode ?? null,
         preview: analysis.status === "processing" ? null : preview,
         /** Scan summary for the animation — only available after pipeline completes */
         scanSummary: preview
@@ -233,10 +292,13 @@ export const analysisRouter = router({
         tempSessionId: z.string().min(1),
         /** Frontend origin for building the magic link URL */
         origin: z.string().url().optional(),
+        /** Honeypot — must be empty for real users */
+        honeypot: z.string().max(200).optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { email, tempSessionId, origin } = input;
+      const { email, tempSessionId, origin, honeypot } = input;
+      const isBotSubmission = typeof honeypot === "string" && honeypot.trim().length > 0;
 
       // Find the temp analysis
       const analysis = await getAnalysisByTempSession(tempSessionId);
@@ -256,11 +318,27 @@ export const analysisRouter = router({
           email,
           emailVerified: false,
           phoneVerified: false,
+          isFraud: isBotSubmission,
         });
         lead = await getLeadByEmail(email);
+      } else if (isBotSubmission && !lead.isFraud) {
+        // Existing lead submitted by a bot — flag it
+        await setLeadFraud(lead.id);
       }
 
       if (!lead) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create lead." });
+
+      // Log honeypot event for observability
+      if (isBotSubmission) {
+        await logLeadEvent({
+          id: randomUUID(),
+          leadId: lead.id,
+          eventName: "wm_honeypot_triggered",
+          eventId: `${lead.id}_wm_honeypot_triggered_flow_a`,
+          source: "server",
+          payload: { honeypotLength: honeypot!.length, flow: "flow_a" },
+        }).catch(() => {});
+      }
 
       // Generate magic link token
       const rawToken = generateToken(32);
@@ -422,13 +500,34 @@ export const analysisRouter = router({
    */
   lookupPhone: publicProcedure
     .input(z.object({ phone: z.string().min(7) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       if (!twilioClient) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Phone verification not configured." });
       }
 
       const digits = input.phone.replace(/\D/g, "");
       const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+
+      // ── IP rate limit: max 20 combined Twilio calls per IP per 10 min ──
+      const clientIp = getClientIp(ctx.req);
+      const ipCheck = ipRateLimiter.check(clientIp);
+      if (!ipCheck.allowed) {
+        console.warn(`[RateLimit] IP rate limit exceeded for ${clientIp}. Remaining: ${ipCheck.remaining}`);
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many attempts. Please try again in 10 minutes.",
+        });
+      }
+
+      // ── Per-phone rate limit: max 10 lookups per phone per 10-minute window ──
+      const rateCheck = lookupRateLimiter.check(e164);
+      if (!rateCheck.allowed) {
+        console.warn(`[RateLimit] Lookup rate limit exceeded for ${e164}. Remaining: ${rateCheck.remaining}`);
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many attempts. Please try again in 10 minutes.",
+        });
+      }
 
       let lineType: string | null = null;
       try {
@@ -467,13 +566,34 @@ export const analysisRouter = router({
         phone: z.string().min(7),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       if (!twilioClient || !VERIFY_SERVICE_SID) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Verify service not configured." });
       }
 
       const digits = input.phone.replace(/\D/g, "");
       const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+
+      // ── IP rate limit: max 20 combined Twilio calls per IP per 10 min ──
+      const clientIp = getClientIp(ctx.req);
+      const ipCheck = ipRateLimiter.check(clientIp);
+      if (!ipCheck.allowed) {
+        console.warn(`[RateLimit] IP rate limit exceeded for ${clientIp}. Remaining: ${ipCheck.remaining}`);
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many attempts. Please try again in 10 minutes.",
+        });
+      }
+
+      // ── Per-phone rate limit: max 5 OTP sends per phone per 10-minute window ──
+      const rateCheck = otpRateLimiter.check(e164);
+      if (!rateCheck.allowed) {
+        console.warn(`[RateLimit] OTP rate limit exceeded for ${e164}. Remaining: ${rateCheck.remaining}`);
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many attempts. Please try again in 10 minutes.",
+        });
+      }
 
       try {
         await twilioClient.verify.v2
@@ -514,6 +634,21 @@ export const analysisRouter = router({
       const digits = phone.replace(/\D/g, "");
       const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
 
+      // ── Progressive backoff: check if in cooldown from prior failures ──
+      const backoffCheck = otpBackoff.check(e164);
+      if (!backoffCheck.allowed) {
+        console.warn(`[Backoff] OTP verify blocked for ${e164}. Failures: ${backoffCheck.failureCount}, cooldown: ${backoffCheck.cooldownRemainingMs}ms, captcha: ${backoffCheck.captchaRequired}`);
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: backoffCheck.message,
+          cause: {
+            cooldownRemainingMs: backoffCheck.cooldownRemainingMs,
+            captchaRequired: backoffCheck.captchaRequired,
+            failureCount: backoffCheck.failureCount,
+          },
+        });
+      }
+
       // Verify OTP with Twilio
       let verificationStatus: string;
       try {
@@ -530,11 +665,21 @@ export const analysisRouter = router({
       }
 
       if (verificationStatus !== "approved") {
+        // Record failure and escalate backoff tier
+        const backoffState = otpBackoff.recordFailure(e164);
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Incorrect code. Please check the SMS and try again.",
+          message: backoffState.message,
+          cause: {
+            cooldownRemainingMs: backoffState.cooldownRemainingMs,
+            captchaRequired: backoffState.captchaRequired,
+            failureCount: backoffState.failureCount,
+          },
         });
       }
+
+      // OTP verified — reset progressive backoff for this phone
+      otpBackoff.reset(e164);
 
       // Flip lead to phone_verified
       await setLeadPhoneVerified(leadId, e164, null);
@@ -621,10 +766,13 @@ export const analysisRouter = router({
         email: z.string().email(),
         answers: z.record(z.string(), z.unknown()),
         origin: z.string().url().optional(),
+        /** Honeypot — must be empty for real users */
+        honeypot: z.string().max(200).optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { email, answers, origin } = input;
+      const { email, answers, origin, honeypot } = input;
+      const isBotSubmission = typeof honeypot === "string" && honeypot.trim().length > 0;
 
       let lead = await getLeadByEmail(email);
       if (!lead) {
@@ -636,13 +784,30 @@ export const analysisRouter = router({
           phoneVerified: false,
           qualificationAnswers: answers,
           qualificationCompletedAt: new Date(),
+          isFraud: isBotSubmission,
         });
         lead = await getLeadByEmail(email);
+      } else if (isBotSubmission && !lead.isFraud) {
+        await setLeadFraud(lead.id);
       }
 
       if (!lead) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create lead." });
 
-      // Log event
+      // Log honeypot event for observability
+      if (isBotSubmission) {
+        await logLeadEvent({
+          id: randomUUID(),
+          leadId: lead.id,
+          eventName: "wm_honeypot_triggered",
+          eventId: `${lead.id}_wm_honeypot_triggered_flow_b`,
+          source: "server",
+          payload: { honeypotLength: honeypot!.length, flow: "flow_b" },
+        }).catch(() => {});
+        // Return success so the bot thinks it worked
+        return { leadId: lead.id };
+      }
+
+      // Log normal account creation event
       await logLeadEvent({
         id: randomUUID(),
         leadId: lead.id,

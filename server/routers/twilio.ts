@@ -38,10 +38,17 @@ export const twilioRouter = router({
         phone: phoneSchema,
         source: z.enum(["flow_a", "flow_b", "callback"]).default("flow_b"),
         answers: z.record(z.string(), z.unknown()).optional(),
+        /**
+         * Honeypot field — should always be empty for real humans.
+         * Bots that auto-fill forms will populate this field.
+         * When non-empty: lead is created but flagged as isFraud=true silently.
+         */
+        honeypot: z.string().max(200).optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { name, phone, source, answers } = input;
+      const { name, phone, source, answers, honeypot } = input;
+      const isBotSubmission = typeof honeypot === "string" && honeypot.trim().length > 0;
 
       if (!twilioClient) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Twilio not configured." });
@@ -85,7 +92,23 @@ export const twilioRouter = router({
         phoneVerified: false,
         lineType: lineType ?? "unknown",
         qualificationAnswers: answers ?? null,
+        // Honeypot: silently flag bot submissions without alerting the bot
+        isFraud: isBotSubmission,
       });
+
+      if (isBotSubmission) {
+        // Log the fraud event for observability but return a normal-looking success response
+        await logLeadEvent({
+          id: randomUUID(),
+          leadId,
+          eventName: "wm_honeypot_triggered",
+          eventId: `${leadId}_wm_honeypot_triggered`,
+          source: "server",
+          payload: { honeypotLength: honeypot!.length, source },
+        }).catch(() => {});
+        // Return success so the bot thinks it worked
+        return { leadId, phone: e164Phone, lineType };
+      }
 
       return { leadId, phone: e164Phone, lineType };
     }),

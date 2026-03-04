@@ -1,5 +1,18 @@
 import type { ExtractionSignals } from "./schema";
 
+// ─── Tri-State Boolean Helpers (Phase 1 Patch) ──────────────────────────────
+// null means "unknown or not mentioned". MUST NOT be treated as false.
+
+export const isTrue = (v: boolean | null | undefined) => v === true;
+export const isFalse = (v: boolean | null | undefined) => v === false;
+export const isUnknown = (v: boolean | null | undefined) => v == null;
+
+export const arr = <T>(v: T[] | null | undefined): T[] =>
+  Array.isArray(v) ? v : [];
+
+export const hasAny = <T>(v: T[] | null | undefined) =>
+  arr(v).length > 0;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PillarKey = "safety" | "scope" | "price" | "fine_print" | "warranty";
@@ -28,7 +41,8 @@ export type ScoredResult = {
 };
 
 export type PreviewFinding = {
-  pillar: "Safety" | "Scope" | "Price" | "FinePrint" | "Warranty";
+  pillarKey: PillarKey;
+  pillarLabel: "Safety" | "Scope" | "Price" | "Fine Print" | "Warranty";
   severity: "warn" | "flag"; // ok is forbidden
   label: string;
   tooltip: string;
@@ -49,12 +63,12 @@ function scoreSafety(s: ExtractionSignals): { score: number; warnings: string[];
   const warnings: string[] = [];
   const missing: string[] = [];
 
-  if (!s.design_pressure_listed) { score -= 15; missing.push("Design pressure not listed"); }
-  if (!s.missile_impact_rated) { score -= 15; missing.push("Missile impact rating not confirmed"); }
-  if (!s.noa_numbers || s.noa_numbers.length === 0) { score -= 20; missing.push("No NOA numbers"); }
-  if (!s.fl_approval_numbers || s.fl_approval_numbers.length === 0) { score -= 10; missing.push("No FL approval numbers"); }
+  if (isFalse(s.design_pressure_listed)) { score -= 15; missing.push("Design pressure not listed"); }
+  if (isFalse(s.missile_impact_rated)) { score -= 15; missing.push("Missile impact rating not confirmed"); }
+  if (!hasAny(s.noa_numbers)) { score -= 20; missing.push("No NOA numbers"); }
+  if (!hasAny(s.fl_approval_numbers)) { score -= 10; missing.push("No FL approval numbers"); }
   if (!s.installation_method) { score -= 10; missing.push("Installation method not specified"); }
-  if (s.missing_noa) { score -= 10; warnings.push("Impact products claimed but no NOA listed"); }
+  if (isTrue(s.missing_noa)) { score -= 10; warnings.push("Impact products claimed but no NOA listed"); }
 
   return { score: Math.max(0, score), warnings, missing };
 }
@@ -65,15 +79,15 @@ function scoreScope(s: ExtractionSignals): { score: number; warnings: string[]; 
   const missing: string[] = [];
 
   if (s.opening_count === null) { score -= 10; missing.push("Opening count not specified"); }
-  if (!s.product_types || s.product_types.length === 0) { score -= 10; missing.push("Product types not listed"); }
-  if (!s.installation_included) { score -= 15; missing.push("Installation not included"); }
-  if (!s.removal_of_old_windows) { score -= 5; missing.push("Old window removal not included"); }
-  if (!s.permit_included) { score -= 15; missing.push("Permit not included"); warnings.push("No permit reference"); }
-  if (!s.inspection_included) { score -= 10; missing.push("Inspection not included"); }
-  if (!s.debris_cleanup_included) { score -= 5; missing.push("Debris cleanup not included"); }
-  if (!s.stucco_repair_included) { score -= 5; missing.push("Stucco repair not included"); }
-  if (!s.trim_wrap_included) { score -= 5; missing.push("Trim wrap not included"); }
-  if (s.missing_permit_reference) { score -= 10; warnings.push("Missing permit reference despite installation"); }
+  if (!hasAny(s.product_types)) { score -= 10; missing.push("Product types not listed"); }
+  if (isFalse(s.installation_included)) { score -= 15; missing.push("Installation not included"); }
+  if (isFalse(s.removal_of_old_windows)) { score -= 5; missing.push("Old window removal not included"); }
+  if (isFalse(s.permit_included)) { score -= 15; missing.push("Permit not included"); warnings.push("No permit reference"); }
+  if (isFalse(s.inspection_included)) { score -= 10; missing.push("Inspection not included"); }
+  if (isFalse(s.debris_cleanup_included)) { score -= 5; missing.push("Debris cleanup not included"); }
+  if (isFalse(s.stucco_repair_included)) { score -= 5; missing.push("Stucco repair not included"); }
+  if (isFalse(s.trim_wrap_included)) { score -= 5; missing.push("Trim wrap not included"); }
+  if (isTrue(s.missing_permit_reference)) { score -= 10; warnings.push("Missing permit reference despite installation"); }
 
   return { score: Math.max(0, score), warnings, missing };
 }
@@ -84,12 +98,12 @@ function scorePrice(s: ExtractionSignals): { score: number; warnings: string[]; 
   const missing: string[] = [];
 
   if (s.total_price === null) { score -= 20; missing.push("Total price not stated"); }
-  if (s.deposit_exceeds_statutory_limit) { score -= 25; warnings.push("Deposit exceeds Florida statutory limit"); }
-  if (s.unusually_high_price) { score -= 15; warnings.push("Price appears unusually high for region"); }
-  if (s.unusually_low_price) { score -= 10; warnings.push("Price appears unusually low — potential bait"); }
-  if (!s.payment_schedule_described) { score -= 10; missing.push("Payment schedule not described"); }
-  if (!s.tax_included) { score -= 5; missing.push("Tax inclusion not stated"); }
-  if (s.today_only_pricing) { score -= 15; warnings.push("Today-only pricing pressure tactic"); }
+  if (isTrue(s.deposit_exceeds_statutory_limit)) { score -= 25; warnings.push("Deposit exceeds Florida statutory limit"); }
+  if (isTrue(s.unusually_high_price)) { score -= 15; warnings.push("Price appears unusually high for region"); }
+  if (isTrue(s.unusually_low_price)) { score -= 10; warnings.push("Price appears unusually low — potential bait"); }
+  if (isFalse(s.payment_schedule_described)) { score -= 10; missing.push("Payment schedule not described"); }
+  if (isFalse(s.tax_included)) { score -= 5; missing.push("Tax inclusion not stated"); }
+  if (isTrue(s.today_only_pricing)) { score -= 15; warnings.push("Today-only pricing pressure tactic"); }
 
   return { score: Math.max(0, score), warnings, missing };
 }
@@ -99,19 +113,19 @@ function scoreFinePrint(s: ExtractionSignals): { score: number; warnings: string
   const warnings: string[] = [];
   const missing: string[] = [];
 
-  if (!s.cancellation_clause) { score -= 20; missing.push("No cancellation clause"); warnings.push("Missing cancellation clause"); }
-  if (s.cancellation_clause && s.cancellation_window_days !== null && s.cancellation_window_days < 3) {
+  if (isFalse(s.cancellation_clause)) { score -= 20; missing.push("No cancellation clause"); warnings.push("Missing cancellation clause"); }
+  if (isTrue(s.cancellation_clause) && s.cancellation_window_days !== null && s.cancellation_window_days < 3) {
     score -= 15; warnings.push("Cancellation window less than 3 days (FL statute requires 3)");
   }
-  if (!s.change_order_clause) { score -= 10; missing.push("No change order clause"); }
-  if (!s.lien_waiver_mentioned) { score -= 10; missing.push("No lien waiver mentioned"); }
-  if (s.arbitration_clause) { score -= 10; warnings.push("Mandatory arbitration clause present"); }
-  if (s.escalation_clause) { score -= 10; warnings.push("Price escalation clause present"); }
-  if (!s.completion_timeline_stated) { score -= 10; missing.push("No completion timeline stated"); }
-  if (!s.insurance_proof_mentioned) { score -= 5; missing.push("No insurance proof mentioned"); }
-  if (!s.license_number_on_contract) { score -= 5; missing.push("License number not on contract"); }
-  if (s.pressure_tactics_detected) { score -= 15; warnings.push("Pressure tactics detected"); }
-  if (s.verbal_promises_noted) { score -= 10; warnings.push("Verbal promises noted — not in writing"); }
+  if (isFalse(s.change_order_clause)) { score -= 10; missing.push("No change order clause"); }
+  if (isFalse(s.lien_waiver_mentioned)) { score -= 10; missing.push("No lien waiver mentioned"); }
+  if (isTrue(s.arbitration_clause)) { score -= 10; warnings.push("Mandatory arbitration clause present"); }
+  if (isTrue(s.escalation_clause)) { score -= 10; warnings.push("Price escalation clause present"); }
+  if (isFalse(s.completion_timeline_stated)) { score -= 10; missing.push("No completion timeline stated"); }
+  if (isFalse(s.insurance_proof_mentioned)) { score -= 5; missing.push("No insurance proof mentioned"); }
+  if (isFalse(s.license_number_on_contract)) { score -= 5; missing.push("License number not on contract"); }
+  if (isTrue(s.pressure_tactics_detected)) { score -= 15; warnings.push("Pressure tactics detected"); }
+  if (isTrue(s.verbal_promises_noted)) { score -= 10; warnings.push("Verbal promises noted — not in writing"); }
 
   return { score: Math.max(0, score), warnings, missing };
 }
@@ -128,9 +142,9 @@ function scoreWarranty(s: ExtractionSignals): { score: number; warnings: string[
   else if (s.labor_warranty_years < 2) { score -= 15; warnings.push("Labor warranty under 2 years"); }
   else if (s.labor_warranty_years < 5) { score -= 5; warnings.push("Labor warranty under 5 years"); }
 
-  if (!s.warranty_transferable) { score -= 10; missing.push("Warranty not transferable"); }
-  if (s.warranty_exclusions_noted) { score -= 5; warnings.push("Warranty exclusions noted"); }
-  if (s.lifetime_warranty_claimed && s.manufacturer_warranty_years !== null && s.manufacturer_warranty_years < 25) {
+  if (isFalse(s.warranty_transferable)) { score -= 10; missing.push("Warranty not transferable"); }
+  if (isTrue(s.warranty_exclusions_noted)) { score -= 5; warnings.push("Warranty exclusions noted"); }
+  if (isTrue(s.lifetime_warranty_claimed) && s.manufacturer_warranty_years !== null && s.manufacturer_warranty_years < 25) {
     score -= 10; warnings.push("Lifetime warranty claimed but years < 25");
   }
 
@@ -139,7 +153,7 @@ function scoreWarranty(s: ExtractionSignals): { score: number; warnings: string[
 
 function applyHardCaps(signals: ExtractionSignals, overallScore: number): { score: number; hardCap: HardCapResult } {
   // Hard cap: deposit exceeds statutory limit
-  if (signals.deposit_exceeds_statutory_limit) {
+  if (isTrue(signals.deposit_exceeds_statutory_limit)) {
     return {
       score: Math.min(overallScore, 45),
       hardCap: {
@@ -152,7 +166,7 @@ function applyHardCaps(signals: ExtractionSignals, overallScore: number): { scor
   }
 
   // Hard cap: pressure tactics + today-only pricing combo
-  if (signals.pressure_tactics_detected && signals.today_only_pricing) {
+  if (isTrue(signals.pressure_tactics_detected) && isTrue(signals.today_only_pricing)) {
     return {
       score: Math.min(overallScore, 50),
       hardCap: {
@@ -165,7 +179,7 @@ function applyHardCaps(signals: ExtractionSignals, overallScore: number): { scor
   }
 
   // Hard cap: no cancellation clause
-  if (!signals.cancellation_clause) {
+  if (isFalse(signals.cancellation_clause)) {
     return {
       score: Math.min(overallScore, 55),
       hardCap: {
@@ -178,7 +192,7 @@ function applyHardCaps(signals: ExtractionSignals, overallScore: number): { scor
   }
 
   // Hard cap: not a window/door document
-  if (!signals.document_is_window_door_related) {
+  if (isFalse(signals.document_is_window_door_related)) {
     return {
       score: 0,
       hardCap: {
@@ -251,15 +265,8 @@ export function scoreFromSignals(signals: ExtractionSignals): ScoredResult {
     ...warranty.missing,
   ];
 
-  const pillarStatuses = derivePillarStatuses({
-    safetyScore: safety.score,
-    scopeScore: scope.score,
-    priceScore: price.score,
-    finePrintScore: finePrint.score,
-    warrantyScore: warranty.score,
-  });
-
-  return {
+  // Build partial result first, then derive pillar statuses from it
+  const partialResult = {
     overallScore: cappedScore,
     finalGrade,
     safetyScore: safety.score,
@@ -267,65 +274,144 @@ export function scoreFromSignals(signals: ExtractionSignals): ScoredResult {
     priceScore: price.score,
     finePrintScore: finePrint.score,
     warrantyScore: warranty.score,
-    pillarStatuses,
+    pillarStatuses: {} as PillarStatuses, // placeholder
     warnings: allWarnings,
     missingItems: allMissing,
     hardCap,
   };
+
+  partialResult.pillarStatuses = derivePillarStatuses(partialResult);
+
+  return partialResult;
 }
 
-// ─── Addendum A: SafePreview Compatibility Patch ──────────────────────────────
+// ─── Phase 3 Patch: SafePreview + Pillar Status Bridge ──────────────────────
+
+function statusFromScore(score: number): PillarStatus {
+  if (score < 50) return "flag";
+  if (score < 75) return "warn";
+  return "ok";
+}
 
 /**
  * derivePillarStatuses — converts component scores into ok/warn/flag.
- * Deterministic, aligns to existing score thresholds.
+ * Hard-cap aware: if hardCap is applied, fine_print is forced to "flag".
  */
-export function derivePillarStatuses(scored: Pick<ScoredResult, "safetyScore" | "scopeScore" | "priceScore" | "finePrintScore" | "warrantyScore">): PillarStatuses {
-  const statusFromScore = (n: number): PillarStatus => {
-    if (n < 50) return "flag";
-    if (n < 75) return "warn";
-    return "ok";
-  };
-
-  return {
+export function derivePillarStatuses(scored: ScoredResult): PillarStatuses {
+  const base: PillarStatuses = {
     safety: statusFromScore(scored.safetyScore),
     scope: statusFromScore(scored.scopeScore),
     price: statusFromScore(scored.priceScore),
     fine_print: statusFromScore(scored.finePrintScore),
     warranty: statusFromScore(scored.warrantyScore),
   };
+
+  if (scored.hardCap?.applied) {
+    base.fine_print = "flag";
+  }
+
+  return base;
 }
 
-// ─── SafePreview Gatekeeper ───────────────────────────────────────────────────
+// ─── Label + Tooltip Maps ───────────────────────────────────────────────────
+
+const PILLAR_LABEL: Record<PillarKey, PreviewFinding["pillarLabel"]> = {
+  safety: "Safety",
+  scope: "Scope",
+  price: "Price",
+  fine_print: "Fine Print",
+  warranty: "Warranty",
+};
 
 const TOOLTIP_MAP: Record<
-  PreviewFinding["pillar"],
-  { flag: PreviewFinding; warn: PreviewFinding }
+  PillarKey,
+  {
+    flag: Omit<PreviewFinding, "pillarKey" | "pillarLabel">;
+    warn: Omit<PreviewFinding, "pillarKey" | "pillarLabel">;
+  }
 > = {
-  Safety: {
-    flag: { pillar: "Safety", severity: "flag", label: "Structural Risk", tooltip: "Structural Risk Detected. Gaps here can compromise installation integrity. Verify specs before you sign." },
-    warn: { pillar: "Safety", severity: "warn", label: "Compliance Ambiguity", tooltip: "Compliance Ambiguity. Specs are vague enough to cause disputes later. Confirm approvals in writing." },
+  safety: {
+    flag: {
+      severity: "flag",
+      label: "Structural Risk",
+      tooltip:
+        "Missing or unclear NOA/DP/impact evidence. Hurricane compliance may fail inspection.",
+    },
+    warn: {
+      severity: "warn",
+      label: "Compliance Ambiguity",
+      tooltip:
+        "Some compliance signals present, but key documentation is incomplete or vague.",
+    },
   },
-  Scope: {
-    flag: { pillar: "Scope", severity: "flag", label: "Significant Scope Gaps", tooltip: "Significant Scope Gaps. Missing install details can trigger change-orders. Lock the scope before you pay." },
-    warn: { pillar: "Scope", severity: "warn", label: "Vague Install Notes", tooltip: "Vague Installation Notes. Room for 'that's not included' later. Require a written checklist." },
+  scope: {
+    flag: {
+      severity: "flag",
+      label: "Scope Gaps",
+      tooltip:
+        "Install scope is missing critical details (permits, repairs, demo, waterproofing, cleanup).",
+    },
+    warn: {
+      severity: "warn",
+      label: "Vague Install Notes",
+      tooltip:
+        "Scope includes basics but lacks clarity on repairs, methods, or responsibilities.",
+    },
   },
-  Price: {
-    flag: { pillar: "Price", severity: "flag", label: "Financial Risk", tooltip: "Financial Risk Detected. Pricing patterns look off for your region. Validate before you commit." },
-    warn: { pillar: "Price", severity: "warn", label: "Pricing Anomaly", tooltip: "Pricing Anomaly. Could be markup hiding in plain sight. Compare and confirm line-by-line." },
+  price: {
+    flag: {
+      severity: "flag",
+      label: "Financial Risk",
+      tooltip:
+        "Price structure is abnormal for Florida market norms given scope and product details.",
+    },
+    warn: {
+      severity: "warn",
+      label: "Pricing Anomaly",
+      tooltip:
+        "Price may be elevated or unclear. Verify line items and compare another quote.",
+    },
   },
-  FinePrint: {
-    flag: { pillar: "FinePrint", severity: "flag", label: "Predatory Clause Hint", tooltip: "Predatory Clause Hint. Terms may shift liability or money onto you. Protect yourself before signing." },
-    warn: { pillar: "FinePrint", severity: "warn", label: "Weakened Protections", tooltip: "Weakened Protections. Standard homeowner safeguards look thin. Demand stronger terms." },
+  fine_print: {
+    flag: {
+      severity: "flag",
+      label: "Contract Trap Risk",
+      tooltip:
+        "Payment terms or clauses create outsized homeowner risk.",
+    },
+    warn: {
+      severity: "warn",
+      label: "Weakened Protections",
+      tooltip:
+        "Fine print contains gaps in payment schedule, cancellation window, or change orders.",
+    },
   },
-  Warranty: {
-    flag: { pillar: "Warranty", severity: "flag", label: "Significant Warranty Gaps", tooltip: "Significant Warranty Gaps. Ambiguity here becomes future liability. Confirm coverage in writing." },
-    warn: { pillar: "Warranty", severity: "warn", label: "Limited Coverage", tooltip: "Limited Coverage. Short warranty windows can leave you exposed. Get the warranty clarified." },
+  warranty: {
+    flag: {
+      severity: "flag",
+      label: "Warranty Gaps",
+      tooltip:
+        "Warranty language missing or unclear. Future liability may fall on the homeowner.",
+    },
+    warn: {
+      severity: "warn",
+      label: "Limited Coverage",
+      tooltip:
+        "Warranty exists but may lack labor coverage or transferability.",
+    },
   },
 };
 
+// ─── Utility Functions ──────────────────────────────────────────────────────
+
 function roundToNearest5(n: number): number {
   return Math.round(n / 5) * 5;
+}
+
+function computeRiskLevel(score: number): SafePreview["riskLevel"] {
+  if (score < 60) return "Critical";
+  if (score < 80) return "Moderate";
+  return "Acceptable";
 }
 
 function bucketWarnings(count: number): SafePreview["warningBucket"] {
@@ -335,11 +421,7 @@ function bucketWarnings(count: number): SafePreview["warningBucket"] {
   return "5+";
 }
 
-function computeRiskLevel(score: number): SafePreview["riskLevel"] {
-  if (score < 60) return "Critical";
-  if (score < 80) return "Moderate";
-  return "Acceptable";
-}
+// ─── SafePreview Gatekeeper ─────────────────────────────────────────────────
 
 /**
  * generateSafePreview — the gatekeeper.
@@ -347,42 +429,49 @@ function computeRiskLevel(score: number): SafePreview["riskLevel"] {
  * - Returns max 3 findings, flags first
  * - Rounds score to nearest 5
  * - Buckets warning count (fog)
- * - Hard-cap aware only via score/riskLevel (no statute leaks)
+ * - Hard-cap aware: derivePillarStatuses forces fine_print to flag when hardCap applied
  */
 export function generateSafePreview(scored: ScoredResult): SafePreview {
   const overallScore = roundToNearest5(scored.overallScore ?? 0);
   const finalGrade = scored.finalGrade ?? "—";
   const riskLevel = computeRiskLevel(overallScore);
 
-  // Use real warning count if present; otherwise fall back to pillar findings
-  const warningCount = Array.isArray(scored.warnings) ? scored.warnings.length : 0;
+  const pillarStatuses = derivePillarStatuses(scored);
 
-  // Derive statuses
-  const statuses = scored.pillarStatuses;
+  const findings: PreviewFinding[] = (
+    Object.keys(pillarStatuses) as PillarKey[]
+  )
+    .flatMap((pillarKey) => {
+      const status = pillarStatuses[pillarKey];
 
-  // Build vulnerability-only findings (no greens)
-  const findings: PreviewFinding[] = [];
+      if (status === "ok") return []; // Censor the Greens
 
-  const map: Array<{ key: PillarKey; pillar: PreviewFinding["pillar"] }> = [
-    { key: "safety", pillar: "Safety" },
-    { key: "scope", pillar: "Scope" },
-    { key: "price", pillar: "Price" },
-    { key: "fine_print", pillar: "FinePrint" },
-    { key: "warranty", pillar: "Warranty" },
-  ];
+      const tpl =
+        status === "flag"
+          ? TOOLTIP_MAP[pillarKey].flag
+          : TOOLTIP_MAP[pillarKey].warn;
 
-  for (const { key, pillar } of map) {
-    const status = statuses[key];
-    if (status === "flag") findings.push(TOOLTIP_MAP[pillar].flag);
-    if (status === "warn") findings.push(TOOLTIP_MAP[pillar].warn);
-    // ok is intentionally omitted ("Censor the Greens")
-  }
+      return [
+        {
+          pillarKey,
+          pillarLabel: PILLAR_LABEL[pillarKey],
+          ...tpl,
+        },
+      ];
+    })
+    .sort((a, b) =>
+      a.severity === b.severity
+        ? 0
+        : a.severity === "flag"
+        ? -1
+        : 1
+    );
 
-  // Severity sort: flags first
-  findings.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "flag" ? -1 : 1));
+  const warningCount =
+    (scored.warnings?.length ?? 0) +
+    (scored.missingItems?.length ?? 0);
 
-  // If truly clean: return empty findings (no praise leak)
-  if (warningCount === 0 && findings.length === 0) {
+  if (findings.length === 0) {
     return {
       overallScore,
       finalGrade,
@@ -392,14 +481,11 @@ export function generateSafePreview(scored: ScoredResult): SafePreview {
     };
   }
 
-  // If warnings exist but findings are empty (edge case), still keep curiosity gap
-  const effectiveCount = Math.max(warningCount, findings.length);
-
   return {
     overallScore,
     finalGrade,
     riskLevel,
-    warningBucket: bucketWarnings(effectiveCount),
+    warningBucket: bucketWarnings(warningCount || findings.length),
     findings: findings.slice(0, 3),
   };
 }

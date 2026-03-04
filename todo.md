@@ -111,10 +111,10 @@
 - [x] Implement GET /analysis/:id with identity-gated response stripping (public/email/phone tiers)
 ### Deliverable 5: TTL Purge + Observability
 - [x] Update purge job for new status enum (processing + temp)
-- [ ] Emit scanner_analysis_completed, scanner_purged, scanner_dedup_hit events (deferred — observability pass)
+- [x] Emit scanner_analysis_completed, scanner_purged, scanner_dedup_hit, scanner_analysis_failed events
 ### Tests
-- [ ] Vitest: scanner-brain pure logic (scoring, preview censor-greens, rounding, bucketing) — blocked by Gemini quota
-- [ ] Vitest: access ladder security (no preview leak, no full leak)
+- [x] Vitest: scanner-brain pure logic (scoring, preview censor-greens, rounding, bucketing) — 5 acceptance tests pass
+- [x] Vitest: access ladder security (no preview leak, no full leak) — 20 tests pass
 - [ ] Vitest: dedup logic
 
 ## TS Error Fix: previewJson migration
@@ -127,3 +127,92 @@
 - [x] Replace setAnalysisPreviewFields with updateAnalysisPipelineResults in db.ts
 - [x] Fix AnalysisPreview.tsx: use preview.finalGrade, preview.overallScore, preview.findings
 - [x] Verify 0 TS errors
+
+## Vertex AI Migration
+- [x] Update analysisEngine.ts: vertexai: true, project: gen-lang-client-0516998301, location: global, model: gemini-3.1-flash-lite-preview
+- [x] Store GOOGLE_APPLICATION_CREDENTIALS_JSON as secret
+- [x] Create vertexAdc.ts: writes JSON to temp file, sets GOOGLE_APPLICATION_CREDENTIALS
+- [x] Bootstrap ADC in server/_core/index.ts before any Gemini client
+- [x] Remove apiKey from Vertex AI client (mutually exclusive with ADC)
+- [x] Re-run Vitest: 35/35 pass, Gemini returns OK
+- [ ] Save checkpoint
+
+## E2E Test Pack
+- [ ] Generate overcharge quote PDF fixture (Test 1 input)
+- [ ] Generate non-quote PDF fixture (Test 2 input)
+- [ ] Set up artifact directories and screenshot naming convention
+- [ ] Execute Test 1: Happy Path Overcharge Quote — all stages with screenshots + DB snapshots
+- [ ] Execute Test 2: No Quote / Invalid Document — all stages with screenshots + DB snapshots
+- [ ] Compile E2E run report markdown with pass/fail per checkpoint
+
+## Final Truth Engine Structural Patch
+### Phase 1 — Tri-State Boolean Safety
+- [x] Add isTrue/isFalse/isUnknown/arr/hasAny helpers to scoring.ts
+- [x] Audit all scoring logic: replace falsy checks with tri-state helpers
+### Phase 2 — D-001 Document Type Gate
+- [x] Add NOT_A_QUOTE gate in analysisEngine.ts after Zod parse
+### Phase 3 — SafePreview + Pillar Status Bridge
+- [x] Replace existing SafePreview/derivePillarStatuses with canonical versions from patch
+- [x] Add PillarKey, PillarStatus, PillarStatuses, PreviewFinding types (pillarKey + pillarLabel)
+- [x] Add PILLAR_LABEL, TOOLTIP_MAP, roundToNearest5, computeRiskLevel, bucketWarnings
+- [x] Add generateSafePreview with CRO constraints (censor greens, max 3, flags first)
+- [x] Fix AnalysisPreview.tsx: update .pillar refs to .pillarKey/.pillarLabel
+### Phase 4 — Vitest Acceptance Tests
+- [x] No Green Leakage test
+- [x] Max 3 Vulnerabilities test
+- [x] Flag Ordering test
+- [x] Score Rounding test
+- [x] Zero Findings test
+
+## D-001 Gate Frontend Wiring + E2E Test 2
+- [x] Wire NOT_A_QUOTE error code into upload mutation error handler
+- [x] Show not_a_quote UI state (amber warning, "That doesn't look like a quote", Try Different File CTA)
+- [x] E2E Test 2: upload grocery receipt, verified NOT_A_QUOTE in 2 polls, screenshot captured
+
+## OTP Rate Limiting (Twilio Billing Protection)
+- [x] Implement in-memory rate limiter (max 5 OTP sends per phone per 10 min window)
+- [x] Wire rate limiter into analysis.sendPhoneOTP procedure (throw TOO_MANY_REQUESTS)
+- [x] Write Vitest test: simulate 6 rapid requests, assert 6th is blocked with 429 — 12 tests pass
+
+## Lookup Phone Rate Limiting (Twilio Lookup v2 Billing Protection)
+- [x] Add lookupRateLimiter singleton (max 10 per phone per 10 min window)
+- [x] Wire rate limiter into analysis.lookupPhone procedure (throw TOO_MANY_REQUESTS)
+- [x] Write Vitest test: simulate 11 rapid requests, assert 11th is blocked — 4 tests pass
+
+## IP-Based Rate Limiting (Defense-in-Depth)
+- [x] Add ipRateLimiter singleton (max 20 Twilio calls per IP per 10 min window)
+- [x] Add getClientIp helper (x-forwarded-for → req.ip → socket.remoteAddress → "unknown")
+- [x] Wire IP rate limiter into lookupPhone and sendPhoneOTP (checked before per-phone limiter)
+- [x] Write Vitest test: 21 requests from same IP with different phones, 21st blocked — 11 tests pass
+
+## Progressive Exponential Backoff (Smart Cooldown)
+- [x] Implement ProgressiveBackoff class (1st fail: 0s, 2nd: 30s, 3rd: 2min, 4th+: 10min + captchaRequired flag)
+- [x] Wire into verifyPhoneOTP failure path (wrong OTP code triggers escalation)
+- [x] Return cooldownMs and captchaRequired in TOO_MANY_REQUESTS/BAD_REQUEST error cause
+- [x] Reset backoff on successful OTP verification
+- [x] Write Vitest tests for all 4 escalation tiers + reset + brute-force simulation — 12 tests pass
+
+## OTP Countdown Timer (Frontend UX)
+- [x] Create useOtpCooldown hook (reads cooldownRemainingMs, ticks every second, returns secondsLeft + captchaRequired)
+- [x] Add custom tRPC errorFormatter to forward backoff data from server cause to client err.data.backoff
+- [x] Wire hook into OTP verification UI — disable submit button during cooldown
+- [x] Show live countdown banner: amber (tiers 2-3) / red (tier 4) with formatted time ("30s", "1:45")
+- [x] Show CAPTCHA warning banner when captchaRequired is true (tier 4) with AlertOctagon icon
+- [x] Clear countdown on successful verification
+
+## Send Code Rate Limit Countdown (Frontend UX)
+- [x] Add sendCodeCooldown hook instance for the Send Code / lookupPhone path
+- [x] Wire into sendPhoneOTP onError and lookupPhone onError — extract err.data.backoff
+- [x] Disable Send Code button and show countdown when sendCodeCooldown.isBlocked
+- [x] Show inline countdown banner below Send Code button (amber/red matching OTP style)
+- [x] Clear sendCodeCooldown on successful OTP send (onSuccess of sendPhoneOTP)
+
+## Honeypot Bot Protection
+- [x] Add isFraud boolean column to leads table in drizzle/schema.ts
+- [x] Added is_fraud column via direct SQL ALTER TABLE (migration journal issue workaround)
+- [x] Add CSS-hidden honeypot input to QualificationCard (name="website", position: absolute left: -9999px)
+- [x] Pass honeypot field value in lookupAndCreateLead, requestEmailVerification, submitNoQuoteLead
+- [x] Server-side: if honeypot non-empty, set isFraud=true silently and return success
+- [x] Add setLeadFraud DB helper; also flags existing leads that re-submit with honeypot filled
+- [x] Log wm_honeypot_triggered lead_event for observability
+- [x] Write 17 Vitest tests: detection logic, schema validation, silent success contract — 116/116 total

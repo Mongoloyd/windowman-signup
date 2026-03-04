@@ -74,6 +74,12 @@ export function QualificationCard() {
   const [leadId, setLeadId] = useState<string | null>(null);
   const [e164Phone, setE164Phone] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  /**
+   * Honeypot field — invisible to humans, filled by bots.
+   * Never shown in the UI (CSS hidden, not type=hidden so bots see it in the DOM).
+   * Passed to the server on submit; non-empty value flags the lead as fraud.
+   */
+  const [honeypot, setHoneypot] = useState("");
 
   // Countdown timer for resend
   useEffect(() => {
@@ -134,6 +140,7 @@ export function QualificationCard() {
       phone: normalizePhone(phone),
       source: "flow_b",
       answers,
+      honeypot, // empty for humans, filled by bots
     });
   };
 
@@ -240,6 +247,22 @@ export function QualificationCard() {
         {/* ── Step: Form ── */}
         {step === "form" && (
           <div className={`glass-card rounded-2xl p-6 sm:p-8 transition-all duration-700 delay-300 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+            {/* Honeypot field — invisible to humans, visible to bots in the DOM */}
+            {/* CSS hidden (not type=hidden) so bots that parse HTML will fill it */}
+            <div style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden", opacity: 0, pointerEvents: "none", tabIndex: -1 } as React.CSSProperties}>
+              <label htmlFor="wm_website">Website</label>
+              <input
+                id="wm_website"
+                type="text"
+                name="website"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                autoComplete="off"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+            </div>
+
             {/* Name + Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div>

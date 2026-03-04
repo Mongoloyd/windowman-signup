@@ -74,6 +74,13 @@ export const leads = mysqlTable("leads", {
   fbLeadSent: boolean("fb_lead_sent").default(false).notNull(),
   fbCompleteRegistrationSent: boolean("fb_complete_registration_sent").default(false).notNull(),
   fbScheduleSent: boolean("fb_schedule_sent").default(false).notNull(),
+  /**
+   * Honeypot bot detection flag.
+   * Set to true when the hidden honeypot field is filled in on submission.
+   * Bots are silently accepted (no error returned) but flagged here.
+   * Exclude isFraud=true rows from all normal lead queries and admin views.
+   */
+  isFraud: boolean("is_fraud").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

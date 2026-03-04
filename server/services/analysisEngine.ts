@@ -59,6 +59,7 @@ export class AnalysisEngineError extends Error {
       | "SIGNALS_EXTRACT_FAILED"
       | "SIGNALS_SCHEMA_VALIDATION_FAILED"
       | "SCORING_FAILED"
+      | "NOT_A_QUOTE"
       | "TIMEOUT"
       | "UNKNOWN",
     public readonly rawResponse?: string
@@ -116,14 +117,28 @@ export interface RunPipelineRequest {
   context?: AnalysisContext;
 }
 
+// ─── Vertex AI configuration ────────────────────────────────────────────────
+
+const VERTEX_PROJECT = "gen-lang-client-0516998301";
+const VERTEX_LOCATION = "global";
+
 // ─── Gemini client singleton ─────────────────────────────────────────────────
 
 function getGeminiClient(): GoogleGenAI {
-  const apiKey = ENV.googleApiKey;
-  if (!apiKey) {
-    throw new AnalysisEngineError("GOOGLE_API_KEY is not configured.", "CONFIG_MISSING");
+  // Vertex AI mode with Application Default Credentials (ADC).
+  // GOOGLE_APPLICATION_CREDENTIALS is set by bootstrapVertexAdc() at server startup.
+  // apiKey must NOT be passed when vertexai: true — they are mutually exclusive.
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    throw new AnalysisEngineError(
+      "GOOGLE_APPLICATION_CREDENTIALS is not set. Call bootstrapVertexAdc() before using the analysis engine.",
+      "CONFIG_MISSING"
+    );
   }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({
+    vertexai: true,
+    project: VERTEX_PROJECT,
+    location: VERTEX_LOCATION,
+  });
 }
 
 // ─── Step 1: OCR via Gemini ──────────────────────────────────────────────────
@@ -409,6 +424,15 @@ export async function runPipeline(req: RunPipelineRequest): Promise<PipelineResu
     } else {
       throw firstErr;
     }
+  }
+
+  // D-001 Gate: Reject non-window/door documents before scoring runs
+  if (signals.document_is_window_door_related === false) {
+    throw new AnalysisEngineError(
+      "Not a window/door quote or contract.",
+      "NOT_A_QUOTE",
+      rawExtractionOutput
+    );
   }
 
   // Step 4: Deterministic scoring + preview + forensics

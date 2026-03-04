@@ -1,4 +1,7 @@
 import "dotenv/config";
+import { bootstrapVertexAdc } from "./vertexAdc";
+// Bootstrap Vertex AI ADC before any Gemini client is created
+bootstrapVertexAdc();
 import express from "express";
 import { startPurgeScheduler } from "../purge";
 import { createServer } from "http";
