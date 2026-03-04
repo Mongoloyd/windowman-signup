@@ -54,6 +54,7 @@ export class AnalysisEngineError extends Error {
       | "SIGNALS_EXTRACT_FAILED"
       | "SIGNALS_SCHEMA_VALIDATION_FAILED"
       | "SCORING_FAILED"
+      | "NOT_A_QUOTE"
       | "TIMEOUT"
       | "UNKNOWN",
     public readonly rawResponse?: string
@@ -405,6 +406,15 @@ export async function runPipeline(req: RunPipelineRequest): Promise<PipelineResu
     } else {
       throw firstErr;
     }
+  }
+
+  // D-001 Gate: Reject non-window/door documents before scoring runs
+  if (signals.document_is_window_door_related === false) {
+    throw new AnalysisEngineError(
+      "Not a window/door quote or contract.",
+      "NOT_A_QUOTE",
+      rawExtractionOutput
+    );
   }
 
   // Step 4: Deterministic scoring + preview + forensics

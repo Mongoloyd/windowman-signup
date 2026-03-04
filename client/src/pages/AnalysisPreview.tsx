@@ -467,7 +467,7 @@ export default function AnalysisPreview() {
                   <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-3">5-Pillar Analysis</p>
                   {PILLAR_CONFIG.map((pillar) => {
                     // Derive status from findings: if a finding matches this pillar, use its severity
-                    const finding = previewData.preview?.findings?.find((f: any) => f.pillar === pillar.label || f.pillar === pillar.key);
+                    const finding = previewData.preview?.findings?.find((f: any) => f.pillarKey === pillar.key || f.pillarLabel === pillar.label);
                     const status = finding ? (finding.severity === "flag" ? "fail" : "warn") : undefined;
                     return (
                       <PillarCard
@@ -627,7 +627,7 @@ export default function AnalysisPreview() {
                 })
               ) : (
                 PILLAR_CONFIG.map((pillar) => {
-                  const finding = previewData?.preview?.findings?.find((f: any) => f.pillar === pillar.label || f.pillar === pillar.key);
+                  const finding = previewData?.preview?.findings?.find((f: any) => f.pillarKey === pillar.key || f.pillarLabel === pillar.label);
                   const status = finding ? (finding.severity === "flag" ? "fail" : "warn") : undefined;
                   return (
                     <PillarCard

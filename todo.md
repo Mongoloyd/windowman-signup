@@ -113,7 +113,7 @@
 - [x] Update purge job for new status enum (processing + temp)
 - [ ] Emit scanner_analysis_completed, scanner_purged, scanner_dedup_hit events (deferred — observability pass)
 ### Tests
-- [ ] Vitest: scanner-brain pure logic (scoring, preview censor-greens, rounding, bucketing) — blocked by Gemini quota
+- [x] Vitest: scanner-brain pure logic (scoring, preview censor-greens, rounding, bucketing) — 5 acceptance tests pass
 - [ ] Vitest: access ladder security (no preview leak, no full leak)
 - [ ] Vitest: dedup logic
 
@@ -136,3 +136,30 @@
 - [x] Remove apiKey from Vertex AI client (mutually exclusive with ADC)
 - [x] Re-run Vitest: 35/35 pass, Gemini returns OK
 - [ ] Save checkpoint
+
+## E2E Test Pack
+- [ ] Generate overcharge quote PDF fixture (Test 1 input)
+- [ ] Generate non-quote PDF fixture (Test 2 input)
+- [ ] Set up artifact directories and screenshot naming convention
+- [ ] Execute Test 1: Happy Path Overcharge Quote — all stages with screenshots + DB snapshots
+- [ ] Execute Test 2: No Quote / Invalid Document — all stages with screenshots + DB snapshots
+- [ ] Compile E2E run report markdown with pass/fail per checkpoint
+
+## Final Truth Engine Structural Patch
+### Phase 1 — Tri-State Boolean Safety
+- [x] Add isTrue/isFalse/isUnknown/arr/hasAny helpers to scoring.ts
+- [x] Audit all scoring logic: replace falsy checks with tri-state helpers
+### Phase 2 — D-001 Document Type Gate
+- [x] Add NOT_A_QUOTE gate in analysisEngine.ts after Zod parse
+### Phase 3 — SafePreview + Pillar Status Bridge
+- [x] Replace existing SafePreview/derivePillarStatuses with canonical versions from patch
+- [x] Add PillarKey, PillarStatus, PillarStatuses, PreviewFinding types (pillarKey + pillarLabel)
+- [x] Add PILLAR_LABEL, TOOLTIP_MAP, roundToNearest5, computeRiskLevel, bucketWarnings
+- [x] Add generateSafePreview with CRO constraints (censor greens, max 3, flags first)
+- [x] Fix AnalysisPreview.tsx: update .pillar refs to .pillarKey/.pillarLabel
+### Phase 4 — Vitest Acceptance Tests
+- [x] No Green Leakage test
+- [x] Max 3 Vulnerabilities test
+- [x] Flag Ordering test
+- [x] Score Rounding test
+- [x] Zero Findings test

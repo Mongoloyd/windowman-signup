@@ -1,0 +1,27 @@
+{
+  "query": "SELECT id, lead_id, temp_session_id, file_key, file_hash, file_name, mime_type, status, rubric_version, preview_json, proof_of_read, ocr_text_key, ocr_text_url, expires_at, created_at FROM analyses WHERE id = 'ac135ca7-c321-420f-886e-748b4227a34a';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 27uXEReyi2JBs58.ee1f7a6279f6 --database QkvsDE9FRrFndBys6dgpY4 --execute SELECT id, lead_id, temp_session_id, file_key, file_hash, file_name, mime_type, status, rubric_version, preview_json, proof_of_read, ocr_text_key, ocr_text_url, expires_at, created_at FROM analyses WHERE id = 'ac135ca7-c321-420f-886e-748b4227a34a';",
+  "rows": [
+    {
+      "id": "ac135ca7-c321-420f-886e-748b4227a34a",
+      "lead_id": "NULL",
+      "temp_session_id": "19b580248570d2c6461aa3195e5998ac",
+      "file_key": "temp/19b580248570d2c6461aa3195e5998ac-1772617082654.pdf",
+      "file_hash": "5749e7a27fc028d02588397a9f13cd9c3b664f1a5e9696863cda730eb92b3362",
+      "file_name": "overcharge_quote.pdf",
+      "mime_type": "application/pdf",
+      "status": "temp",
+      "rubric_version": "3.0.0",
+      "preview_json": "{\"finalGrade\": \"F\", \"findings\": [{\"label\": \"Structural Risk\", \"pillar\": \"Safety\", \"severity\": \"flag\", \"tooltip\": \"Structural Risk Detected. Gaps here can compromise installation integrity. Verify specs before you sign.\"}, {\"label\": \"Weakened Protections\", \"pillar\": \"FinePrint\", \"severity\": \"warn\", \"tooltip\": \"Weakened Protections. Standard homeowner safeguards look thin. Demand stronger terms.\"}, {\"label\": \"Limited Coverage\", \"pillar\": \"Warranty\", \"severity\": \"warn\", \"tooltip\": \"Limited Coverage. Short warranty windows can leave you exposed. Get the warranty clarified.\"}], \"overallScore\": 45, \"riskLevel\": \"Critical\", \"warningBucket\": \"3+\"}",
+      "proof_of_read": "{\"city\": \"Fort Lauderdale\", \"confidence_score\": 0.95, \"contractor_license\": null, \"contractor_name\": \"Sunshine State Windows & Doors LLC\", \"deposit\": 5810.1, \"doc_date\": \"2026-03-01\", \"page_count\": 1, \"product_keywords\": [\"impact window\"], \"total_price\": 9683.5, \"zip\": \"33301\"}",
+      "ocr_text_key": "ocr/ac135ca7-c321-420f-886e-748b4227a34a.txt",
+      "ocr_text_url": "https://d2xsxph8kpxj0f.cloudfront.net/87108037/QkvsDE9FRrFndBys6dgpY4/ocr/ac135ca7-c321-420f-886e-748b4227a34a.txt",
+      "expires_at": "2026-03-04 15:38:03",
+      "created_at": "2026-03-04 09:38:04"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlead_id\ttemp_session_id\tfile_key\tfile_hash\tfile_name\tmime_type\tstatus\trubric_version\tpreview_json\tproof_of_read\tocr_text_key\tocr_text_url\texpires_at\tcreated_at\nac135ca7-c321-420f-886e-748b4227a34a\tNULL\t19b580248570d2c6461aa3195e5998ac\ttemp/19b580248570d2c6461aa3195e5998ac-1772617082654.pdf\t5749e7a27fc028d02588397a9f13cd9c3b664f1a5e9696863cda730eb92b3362\tovercharge_quote.pdf\tapplication/pdf\ttemp\t3.0.0\t{\"finalGrade\": \"F\", \"findings\": [{\"label\": \"Structural Risk\", \"pillar\": \"Safety\", \"severity\": \"flag\", \"tooltip\": \"Structural Risk Detected. Gaps here can compromise installation integrity. Verify specs before you sign.\"}, {\"label\": \"Weakened Protections\", \"pillar\": \"FinePrint\", \"severity\": \"warn\", \"tooltip\": \"Weakened Protections. Standard homeowner safeguards look thin. Demand stronger terms.\"}, {\"label\": \"Limited Coverage\", \"pillar\": \"Warranty\", \"severity\": \"warn\", \"tooltip\": \"Limited Coverage. Short warranty windows can leave you exposed. Get the warranty clarified.\"}], \"overallScore\": 45, \"riskLevel\": \"Critical\", \"warningBucket\": \"3+\"}\t{\"city\": \"Fort Lauderdale\", \"confidence_score\": 0.95, \"contractor_license\": null, \"contractor_name\": \"Sunshine State Windows & Doors LLC\", \"deposit\": 5810.1, \"doc_date\": \"2026-03-01\", \"page_count\": 1, \"product_keywords\": [\"impact window\"], \"total_price\": 9683.5, \"zip\": \"33301\"}\tocr/ac135ca7-c321-420f-886e-748b4227a34a.txt\thttps://d2xsxph8kpxj0f.cloudfront.net/87108037/QkvsDE9FRrFndBys6dgpY4/ocr/ac135ca7-c321-420f-886e-748b4227a34a.txt\t2026-03-04 15:38:03\t2026-03-04 09:38:04\n",
+  "stderr": "",
+  "execution_time_ms": 366
+}
