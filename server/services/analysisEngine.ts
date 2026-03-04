@@ -28,6 +28,11 @@ import {
   generateForensicSummary,
   extractIdentity,
 } from "../scanner-brain";
+import {
+  detectPromptInjection,
+  buildGeminiInputText,
+  PROMPT_HARDENING_APPENDIX,
+} from "./promptInjection";
 import type {
   ExtractionSignals,
   AnalysisContext,
@@ -272,14 +277,27 @@ export async function extractSignals(
 ): Promise<{ signals: ExtractionSignals; rawOutput: string }> {
   const ai = getGeminiClient();
 
-  const userPrompt = USER_PROMPT_TEMPLATE({ ocrText, context, retryInstruction });
+  // 1) Detect injection (deterministic, no side effects)
+  const detection = detectPromptInjection(ocrText);
+
+  // 2) Build hardened input text (wrap OCR as untrusted evidence)
+  const hardenedOcrBlock = buildGeminiInputText(ocrText, detection);
+
+  // 3) Build your existing user prompt, but feed hardenedOcrBlock instead of raw OCR
+  const userPrompt = USER_PROMPT_TEMPLATE({
+    ocrText: hardenedOcrBlock,
+    context,
+    retryInstruction,
+  });
 
   let rawText: string;
   try {
     const result = await ai.models.generateContent({
       model: GEMINI_MODEL,
       config: {
-        systemInstruction: "You are Window Man's extraction engine. Return ONLY valid JSON matching the ExtractionSignals schema. No markdown fences. No commentary.",
+        systemInstruction:
+          "You are Window Man's extraction engine. Return ONLY valid JSON matching the ExtractionSignals schema. No markdown fences. No commentary.\n\n" +
+          PROMPT_HARDENING_APPENDIX,
         responseMimeType: "application/json",
       },
       contents: [
