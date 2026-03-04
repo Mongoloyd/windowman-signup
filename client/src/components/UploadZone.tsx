@@ -19,6 +19,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useInView } from "@/hooks/useInView";
+import { firePhoneVerifiedConversion, hashPii } from "@/lib/pixels";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -165,6 +166,7 @@ export function UploadZone() {
   const [file, setFile] = useState<File | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [email, setEmail] = useState("");
+  const [honeypotEmail, setHoneypotEmail] = useState(""); // Flow A honeypot — must stay empty
   const [phone, setPhone] = useState("");
   const [e164Phone, setE164Phone] = useState("");
   const [scanStep, setScanStep] = useState(0);
@@ -269,9 +271,22 @@ export function UploadZone() {
   });
 
   const verifyPhoneOTPMutation = trpc.analysis.verifyPhoneOTP.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setAnalysisData((prev) => prev ? { ...prev, fullAnalysis: data.fullAnalysis as Record<string, unknown> } : prev);
       setState("full_analysis");
+      // Fire conversion pixels — guarded by isFraud flag from server
+      try {
+        const [hashedEmail, hashedPhone] = await Promise.all([
+          email ? hashPii(email) : Promise.resolve(undefined),
+          e164Phone ? hashPii(e164Phone) : Promise.resolve(undefined),
+        ]);
+        firePhoneVerifiedConversion(
+          { em: hashedEmail, ph: hashedPhone, leadId: data.leadId, eventId: crypto.randomUUID() },
+          { isFraud: data.isFraud }
+        );
+      } catch {
+        // Pixel fires are non-critical — never block the UX
+      }
     },
     onError: (err) => toast.error(err.message || "Incorrect code. Please try again."),
   });
@@ -311,7 +326,7 @@ export function UploadZone() {
 
   const handleEmailSubmit = () => {
     if (!email.trim() || !analysisData) return;
-    requestEmailMutation.mutate({ email: email.trim(), tempSessionId: analysisData.tempSessionId, origin: window.location.origin });
+    requestEmailMutation.mutate({ email: email.trim(), tempSessionId: analysisData.tempSessionId, origin: window.location.origin, honeypot: honeypotEmail || undefined });
   };
 
   const handlePhoneSubmit = () => {
@@ -497,6 +512,17 @@ export function UploadZone() {
               <p className="text-slate-400 text-sm">Enter your email to receive a secure link to your results.</p>
             </div>
             <div className="space-y-3 max-w-md mx-auto">
+              {/* Honeypot field — CSS hidden, must stay empty for real users */}
+              <input
+                type="text"
+                name="website"
+                value={honeypotEmail}
+                onChange={(e) => setHoneypotEmail(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden", opacity: 0 }}
+              />
               <input
                 type="email"
                 value={email}

@@ -36,6 +36,7 @@ import {
   createLeadSession,
   getAnalysisByHash,
   setLeadFraud,
+  getLeadById,
 } from "../db";
 import { sendMagicLinkEmail } from "../email";
 import { twilioClient } from "../twilio";
@@ -746,12 +747,17 @@ export const analysisRouter = router({
         console.error("[Twilio] Team SMS failed:", err);
       }
 
+      // Fetch lead to get isFraud flag for client-side pixel guard
+      const lead = await getLeadById(leadId);
+
       // Return full analysis — only sent AFTER phone OTP verified
       return {
         success: true,
         leadId,
         phoneVerified: true,
         fullAnalysis: analysis.fullJson,
+        /** isFraud=true means honeypot was triggered — client must NOT fire conversion pixels */
+        isFraud: lead?.isFraud ?? false,
       };
     }),
 
