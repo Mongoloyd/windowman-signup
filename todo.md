@@ -199,3 +199,10 @@
 - [x] Show live countdown banner: amber (tiers 2-3) / red (tier 4) with formatted time ("30s", "1:45")
 - [x] Show CAPTCHA warning banner when captchaRequired is true (tier 4) with AlertOctagon icon
 - [x] Clear countdown on successful verification
+
+## Send Code Rate Limit Countdown (Frontend UX)
+- [x] Add sendCodeCooldown hook instance for the Send Code / lookupPhone path
+- [x] Wire into sendPhoneOTP onError and lookupPhone onError — extract err.data.backoff
+- [x] Disable Send Code button and show countdown when sendCodeCooldown.isBlocked
+- [x] Show inline countdown banner below Send Code button (amber/red matching OTP style)
+- [x] Clear sendCodeCooldown on successful OTP send (onSuccess of sendPhoneOTP)
