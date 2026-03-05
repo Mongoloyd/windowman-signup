@@ -249,3 +249,21 @@
 - [x] Create reportPdf.test.ts with 14 unit tests
 - [x] Update vitest.config.ts to include client-side tests
 - [x] All tests passing (14/14)
+
+
+## Verify-Email Flow Fix (Cross-Device Reliability)
+- [x] Create VerifyEmail.tsx page component with robust error handling
+- [x] Parse query params: token, session (tempSessionId), attach (deprecated)
+- [x] Handle same-device flow: token + session → analysis attached
+- [x] Handle cross-device flow: token only → no analysis attached, show soft error
+- [x] Handle Flow B: token only → no analysis, show account ready message
+- [x] Add error UI states: link_used, link_expired, server_error, invalid_link
+- [x] Add recovery CTAs: Request New Link, Upload New Quote, Try Again
+- [x] Add server logging in analysis.verifyEmail: warn on missing tempSessionId
+- [x] Add server logging: warn when tempSessionId provided but no analysis found
+- [x] Register /verify-email route in App.tsx
+- [x] Create VerifyEmail.test.ts with 16 unit tests (all passing)
+- [x] Test query param parsing (5 tests)
+- [x] Test error message mapping (4 tests)
+- [x] Test recovery action selection (3 tests)
+- [x] Test page state transitions (4 tests)

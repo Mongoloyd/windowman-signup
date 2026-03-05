@@ -421,8 +421,20 @@ export const analysisRouter = router({
       const sessionId = tempSessionId ?? undefined;
       let analysis = sessionId ? await getAnalysisByTempSession(sessionId) : null;
 
+      if (!tempSessionId) {
+        console.warn(
+          `[verifyEmail] No tempSessionId provided for lead ${leadId}. ` +
+          `Cross-device or Flow B detected. User will need to re-upload or select existing scan.`
+        );
+      }
+
       if (analysis) {
         await attachAnalysisToLead(analysis.id, leadId);
+      } else if (tempSessionId) {
+        console.warn(
+          `[verifyEmail] tempSessionId provided but no analysis found for lead ${leadId}. ` +
+          `Analysis may have been purged or session is invalid.`
+        );
       }
 
       // Log event
