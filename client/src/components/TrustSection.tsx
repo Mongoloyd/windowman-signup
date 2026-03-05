@@ -12,20 +12,35 @@ export function TrustSection() {
   const { ref, isInView } = useInView(0.15);
 
   return (
-    <section ref={ref} className="relative py-16 overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: "linear-gradient(90deg, transparent, rgba(8,145,178,0.2), transparent)" }} />
+    <section
+      ref={ref}
+      className="relative py-16 overflow-hidden"
+      aria-label="Trust and security"
+    >
+      <div
+        className="absolute top-0 left-0 right-0 h-[1px]"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, rgba(8,145,178,0.25), transparent)",
+        }}
+        aria-hidden="true"
+      />
 
       <div className="relative z-10 container max-w-5xl">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6" role="list">
           {trustItems.map((item, i) => (
             <div
               key={item.label}
+              role="listitem"
               className={`text-center transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
               style={{ transitionDelay: `${i * 100}ms` }}
             >
-              <item.icon className="w-6 h-6 text-emerald-500 mx-auto mb-3 opacity-70" />
-              <h4 className="font-semibold text-slate-900 text-sm mb-1">{item.label}</h4>
-              <p className="text-slate-400 text-xs">{item.desc}</p>
+              <item.icon
+                className="w-6 h-6 text-emerald-700 mx-auto mb-3"
+                aria-hidden="true"
+              />
+              <h4 className="font-bold text-slate-900 text-sm mb-1">{item.label}</h4>
+              <p className="text-slate-700 font-medium text-xs">{item.desc}</p>
             </div>
           ))}
         </div>

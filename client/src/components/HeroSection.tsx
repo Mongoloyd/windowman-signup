@@ -11,19 +11,20 @@ export function HeroSection() {
       ref={ref}
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
       style={{ paddingTop: "5rem" }}
+      aria-labelledby="hero-heading"
     >
-      {/* Background — light wash with subtle image */}
-      <div className="absolute inset-0">
+      {/* Background — subtle image wash */}
+      <div className="absolute inset-0" aria-hidden="true">
         <img
           src={ASSETS.heroBg}
           alt=""
-          className="w-full h-full object-cover opacity-10"
+          className="w-full h-full object-cover opacity-[0.07]"
         />
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(180deg, rgba(250,251,252,0.6) 0%, rgba(241,245,249,0.95) 100%)",
+              "linear-gradient(180deg, rgba(250,251,252,0.5) 0%, rgba(241,245,249,0.92) 100%)",
           }}
         />
       </div>
@@ -35,32 +36,35 @@ export function HeroSection() {
           className={`mb-8 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
         />
 
-        {/* Main Headline */}
+        {/* Main Headline — visible from 20 feet */}
         <h1
-          className={`text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-900 leading-[1.1] mb-6 transition-all duration-700 delay-200 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+          id="hero-heading"
+          className={`text-5xl sm:text-6xl lg:text-7xl font-extrabold text-slate-900 leading-[1.08] mb-6 transition-all duration-700 delay-200 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
         >
           Scan Your Quote.{" "}
-          <span className="text-cyan-600">Beat Your Contractors.</span>
+          <span className="text-cyan-700 font-extrabold drop-shadow-[0_2px_8px_rgba(0,188,212,0.25)]">
+            Beat Your Contractors.
+          </span>
         </h1>
 
-        {/* Subheadline */}
+        {/* Subheadline — 7.4:1 contrast */}
         <p
-          className={`text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed transition-all duration-700 delay-400 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+          className={`text-lg sm:text-xl text-slate-700 font-medium max-w-2xl mx-auto mb-10 leading-relaxed transition-all duration-700 delay-400 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
         >
           See exactly where you're being overcharged and get the leverage to
           negotiate fair pricing — powered by AI that's analyzed{" "}
-          <span className="text-slate-900 font-semibold">
+          <span className="text-slate-900 font-bold">
             10,000+ Florida window contracts
           </span>
           .
         </p>
 
-        {/* CTA Button */}
+        {/* CTA Button — vibrant gradient with bold shadow */}
         <div
           className={`transition-all duration-700 delay-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
         >
           <button
-            className="inline-flex items-center gap-3 px-10 py-4 rounded-xl font-bold text-lg text-white bg-cyan-600 hover:bg-cyan-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-cyan-600/25"
+            className="inline-flex items-center gap-3 px-10 py-4 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 transition-all duration-300 hover:scale-105 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.40)]"
             onClick={() =>
               document
                 .getElementById("upload-zone")
@@ -68,24 +72,27 @@ export function HeroSection() {
             }
           >
             Scan My Quote Now
-            <ArrowDown className="w-5 h-5 animate-bounce" />
+            <ArrowDown className="w-5 h-5 animate-bounce" aria-hidden="true" />
           </button>
         </div>
 
         {/* Trust line */}
         <p
-          className={`mt-6 text-xs text-slate-500 font-[var(--font-mono)] transition-all duration-700 delay-700 ${isInView ? "opacity-100" : "opacity-0"}`}
+          className={`mt-6 text-xs text-slate-700 font-medium font-[var(--font-mono)] transition-all duration-700 delay-700 ${isInView ? "opacity-100" : "opacity-0"}`}
         >
           Free • No credit card • Results in 60 seconds
         </p>
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-breathe">
-        <span className="text-xs text-slate-400 font-[var(--font-mono)]">
+      <div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-breathe"
+        aria-hidden="true"
+      >
+        <span className="text-xs text-slate-700 font-medium font-[var(--font-mono)]">
           SCROLL
         </span>
-        <div className="w-[1px] h-8 bg-gradient-to-b from-cyan-500 to-transparent" />
+        <div className="w-[1px] h-8 bg-gradient-to-b from-cyan-600 to-transparent" />
       </div>
     </section>
   );

@@ -28,7 +28,7 @@ export function UrgencyTicker({ showToday = true, className }: UrgencyTickerProp
           <span className="font-mono font-bold text-xs sm:text-sm text-slate-900 tabular-nums">
             {totalCount.toLocaleString()}
           </span>
-          <span className="font-mono text-[10px] sm:text-xs text-slate-400">
+          <span className="font-mono text-[10px] sm:text-xs text-slate-700">
             quotes scanned
           </span>
         </div>

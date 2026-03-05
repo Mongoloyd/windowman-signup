@@ -3,21 +3,39 @@ import { Link } from "wouter";
 
 export function Footer() {
   return (
-    <footer className="relative py-12 border-t border-slate-200/60">
+    <footer
+      className="relative py-12 border-t border-slate-300/60 bg-white/60"
+      role="contentinfo"
+    >
       <div className="container max-w-5xl">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img src={ASSETS.windowmanCharacter} alt="WindowMan" className="h-8 w-8 object-contain" />
-            <span className="text-sm font-bold text-slate-900">
-              Window<span className="text-cyan-600">Man</span>
+            <img
+              src={ASSETS.windowmanCharacter}
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8 object-contain drop-shadow-sm"
+            />
+            <span className="text-sm font-extrabold text-slate-900">
+              Window<span className="text-cyan-700 font-extrabold">Man</span>
             </span>
-            <span className="text-slate-400 text-xs font-[var(--font-mono)]">The Truth Engine</span>
+            <span className="text-slate-700 text-xs font-medium font-[var(--font-mono)]">
+              The Truth Engine
+            </span>
           </div>
-          <div className="flex items-center gap-6 text-xs text-slate-400 font-[var(--font-mono)]">
-            <Link href="/privacy" className="hover:text-slate-700 transition-colors">Privacy Policy</Link>
+          <nav
+            className="flex items-center gap-6 text-xs text-slate-700 font-medium font-[var(--font-mono)]"
+            aria-label="Footer navigation"
+          >
+            <Link
+              href="/privacy"
+              className="hover:text-cyan-700 transition-colors underline-offset-2 hover:underline"
+            >
+              Privacy Policy
+            </Link>
             <span>Terms of Service</span>
             <span>&copy; 2025 WindowMan</span>
-          </div>
+          </nav>
         </div>
       </div>
     </footer>

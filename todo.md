@@ -294,3 +294,19 @@
 - [x] Strip dark colors from UrgencyTicker.tsx
 - [x] Strip dark colors from AnalysisReveal.tsx
 - [x] Strip dark colors from QualificationCard.tsx
+
+## Exhaustive Light Mode Refactor (6:1 Contrast + ARIA)
+- [x] Phase 1: Kill dark mode root (index.html, index.css, App.tsx, double footer fix)
+- [x] Phase 2-3: Rewrite Header.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite Footer.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite HeroSection.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite ProblemSection.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite HowItWorksSection.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite TestimonialSection.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite TrustSection.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite UploadZone.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite ScanningState.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite AnalysisReveal.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 2-3: Rewrite QualificationCard.tsx with mechanical mapping + 6:1 contrast
+- [x] Phase 4: ScanLine light variant (confirmed variant="light" in AppLayout)
+- [x] Phase 5: grep proof CLEAN, tsc 0 errors, 237/239 tests pass (2 pre-existing timeouts)

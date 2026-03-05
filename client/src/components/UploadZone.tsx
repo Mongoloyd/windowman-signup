@@ -118,7 +118,7 @@ function OTPInput({ onComplete, disabled }: { onComplete: (code: string) => void
           className="w-12 h-14 text-center text-xl font-bold rounded-lg border-2 text-slate-900 focus:outline-none transition-all duration-200 disabled:opacity-50"
           style={{
             background: d ? "rgba(8,145,178,0.05)" : "white",
-            borderColor: d ? "#0891B2" : "#E2E8F0",
+            borderColor: d ? "#0891B2" : "#CBD5E1",
             boxShadow: d ? "0 0 12px rgba(8,145,178,0.15)" : "none",
             fontFamily: "var(--font-mono)",
           }}
@@ -147,7 +147,7 @@ function PillarRow({ pillar, status, isScanning }: {
   const { icon: statusIcon, label, color } = getStatusDisplay();
 
   return (
-    <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-slate-50 border border-slate-200">
+    <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-white/60 border border-cyan-500/15">
       <div className="flex items-center gap-3">
         <Icon className="w-4 h-4 text-cyan-600 shrink-0" />
         <span className="text-sm text-slate-700 font-medium">{pillar.label}</span>
@@ -383,11 +383,11 @@ export function UploadZone() {
                 <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleFileInput} />
                 <CloudUpload className="w-16 h-16 text-cyan-600 mx-auto mb-6 opacity-60" />
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Have Your Quote Ready?</h3>
-                <p className="text-slate-500 mb-8">Let's analyze it. Drop your quote here or click to upload.</p>
+                <p className="text-slate-700 mb-8">Let's analyze it. Drop your quote here or click to upload.</p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
                   <button
                     onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-cyan-600 hover:bg-cyan-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-cyan-600/25"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)] transition-all duration-300 hover:scale-105 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)]"
                   >
                     <FileText className="w-4 h-4" />
                     Upload PDF
@@ -400,28 +400,28 @@ export function UploadZone() {
                     Take Photo
                   </button>
                 </div>
-                <p className="text-xs text-slate-400 font-mono">PDF, JPG, PNG, WebP • Max 10MB</p>
+                <p className="text-xs text-slate-700 font-mono">PDF, JPG, PNG, WebP • Max 10MB</p>
               </div>
             </div>
 
             {/* RIGHT: No Quote Path (2 cols) */}
             <div className={`lg:col-span-2 transition-all duration-700 delay-400 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
               <div
-                className="rounded-3xl p-8 h-full flex flex-col justify-center bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200"
+                className="rounded-3xl p-8 h-full flex flex-col justify-center bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-500/15"
               >
                 <UserPlus className="w-10 h-10 text-blue-600 mb-6 opacity-70" />
                 <h3 className="text-xl font-bold text-slate-900 mb-3">Don't Have a Quote Yet?</h3>
-                <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                <p className="text-slate-700 text-sm mb-6 leading-relaxed">
                   No problem. Create your free account now and scan your quote whenever you're ready. We'll be here.
                 </p>
                 <button
-                  className="inline-flex items-center justify-center gap-2 w-full px-6 py-3.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-blue-600/20"
+                  className="inline-flex items-center justify-center gap-2 w-full px-6 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-[0_10px_30px_-5px_rgba(59,130,246,0.35)] transition-all duration-300 hover:scale-[1.02] shadow-[0_10px_30px_-5px_rgba(59,130,246,0.30)]"
                   onClick={() => document.getElementById("qualification-section")?.scrollIntoView({ behavior: "smooth" })}
                 >
                   Create Account & Scan Later
                   <ArrowRight className="w-4 h-4" />
                 </button>
-                <p className="text-xs text-slate-400 font-mono mt-4 text-center">Free forever • No credit card required</p>
+                <p className="text-xs text-slate-700 font-mono mt-4 text-center">Free forever • No credit card required</p>
               </div>
             </div>
           </div>
@@ -429,29 +429,29 @@ export function UploadZone() {
 
         {/* ── STATE: uploading ── */}
         {state === "uploading" && (
-          <div className="rounded-3xl border border-slate-200 p-12 text-center bg-white/80 backdrop-blur-xl shadow-lg">
+          <div className="rounded-3xl border border-cyan-500/15 p-12 text-center bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)]">
             <Loader2 className="w-10 h-10 text-cyan-600 animate-spin mx-auto mb-4" />
             <p className="text-slate-900 font-semibold text-lg mb-2">Uploading your quote...</p>
-            <p className="text-slate-500 text-sm">{file?.name}</p>
+            <p className="text-slate-700 text-sm">{file?.name}</p>
           </div>
         )}
 
         {/* ── STATE: not_a_quote ── */}
         {state === "not_a_quote" && (
-          <div className="rounded-3xl p-10 text-center bg-white/80 backdrop-blur-xl shadow-lg border border-amber-200">
+          <div className="rounded-3xl p-10 text-center bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-500/15">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6 bg-amber-50 border border-amber-200">
               <AlertTriangle className="w-8 h-8 text-amber-500" />
             </div>
             <h3 className="text-slate-900 font-bold text-xl mb-3">That doesn't look like a quote</h3>
-            <p className="text-slate-600 text-base mb-2">
+            <p className="text-slate-800 text-base mb-2">
               Upload a window or door quote or contract.
             </p>
-            <p className="text-slate-400 text-sm mb-8 font-mono">
+            <p className="text-slate-700 text-sm mb-8 font-mono">
               We analyze window &amp; door replacement quotes only — PDFs, photos, or scans of contractor estimates.
             </p>
             <button
               onClick={() => { setState("idle"); setFile(null); }}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-cyan-600 hover:bg-cyan-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-cyan-600/25"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)] transition-all duration-300 hover:scale-105 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)]"
             >
               <RefreshCw className="w-4 h-4" />
               Try a Different File
@@ -461,14 +461,14 @@ export function UploadZone() {
 
         {/* ── STATE: analyzing ── */}
         {state === "analyzing" && (
-          <div className="rounded-3xl p-8 bg-white/80 backdrop-blur-xl shadow-lg border border-cyan-200">
+          <div className="rounded-3xl p-8 bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-200">
             <div className="text-center mb-8">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 bg-cyan-50 border border-cyan-200">
                 <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
                 <span className="text-cyan-700 text-xs font-mono tracking-wider">AI SCANNING</span>
               </div>
               <h3 className="text-slate-900 font-bold text-xl mb-2">Analyzing your quote...</h3>
-              <p className="text-slate-500 text-sm font-mono">{SCANNING_MESSAGES[scanStep]}</p>
+              <p className="text-slate-700 text-sm font-mono">{SCANNING_MESSAGES[scanStep]}</p>
             </div>
             <div className="space-y-2">
               {PILLAR_CONFIG.map((pillar, i) => (
@@ -480,12 +480,12 @@ export function UploadZone() {
 
         {/* ── STATE: email_gate ── */}
         {state === "email_gate" && (
-          <div className="rounded-3xl p-8 bg-white/80 backdrop-blur-xl shadow-lg border border-cyan-200">
+          <div className="rounded-3xl p-8 bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-200">
             {/* Blurred teaser */}
             <div className="relative mb-8">
-              <div className="rounded-xl p-6 blur-sm select-none pointer-events-none bg-slate-50 border border-slate-200">
+              <div className="rounded-xl p-6 blur-sm select-none pointer-events-none bg-white/60 border border-cyan-500/15">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="h-8 w-24 rounded bg-slate-200" />
+                  <div className="h-8 w-24 rounded bg-slate-300" />
                   <div className="h-10 w-16 rounded-lg bg-cyan-100" />
                 </div>
                 <div className="grid grid-cols-5 gap-2">
@@ -504,7 +504,7 @@ export function UploadZone() {
 
             <div className="text-center mb-6">
               <h3 className="text-slate-900 font-bold text-xl mb-2">Your analysis is ready.</h3>
-              <p className="text-slate-500 text-sm">Enter your email to receive a secure link to your results.</p>
+              <p className="text-slate-700 text-sm">Enter your email to receive a secure link to your results.</p>
             </div>
             <div className="space-y-3 max-w-md mx-auto">
               {/* Honeypot field — CSS hidden, must stay empty for real users */}
@@ -524,12 +524,12 @@ export function UploadZone() {
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleEmailSubmit()}
                 placeholder="your@email.com"
-                className="w-full px-4 py-3 rounded-xl text-slate-900 placeholder-slate-400 bg-white border border-slate-200 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-xl text-slate-900 placeholder-slate-500 bg-white border border-cyan-500/15 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors text-sm"
               />
               <button
                 onClick={handleEmailSubmit}
                 disabled={!email.trim() || requestEmailMutation.isPending}
-                className="w-full py-3 rounded-xl font-bold text-sm text-white bg-cyan-600 hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {requestEmailMutation.isPending ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
@@ -537,22 +537,22 @@ export function UploadZone() {
                   <><Mail className="w-4 h-4" /> Send My Secure Link</>
                 )}
               </button>
-              <p className="text-center text-slate-400 text-xs">One-click verification link. No password required.</p>
+              <p className="text-center text-slate-700 text-xs">One-click verification link. No password required.</p>
             </div>
           </div>
         )}
 
         {/* ── STATE: email_sent ── */}
         {state === "email_sent" && (
-          <div className="rounded-3xl p-10 text-center bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200">
+          <div className="rounded-3xl p-10 text-center bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-500/15">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 bg-emerald-50 border border-emerald-200">
               <Mail className="w-7 h-7 text-emerald-500" />
             </div>
             <h3 className="text-slate-900 font-bold text-xl mb-3">Check your inbox</h3>
-            <p className="text-slate-600 text-sm mb-2">
+            <p className="text-slate-800 text-sm mb-2">
               We sent a secure link to <strong className="text-slate-900">{email}</strong>
             </p>
-            <p className="text-slate-400 text-xs mb-6">The link expires in 6 hours. Check your spam folder if you don't see it.</p>
+            <p className="text-slate-700 text-xs mb-6">The link expires in 6 hours. Check your spam folder if you don't see it.</p>
             <button onClick={() => setState("email_gate")} className="text-cyan-600 text-sm hover:underline flex items-center gap-1 mx-auto">
               <ArrowLeft className="w-3 h-3" /> Use a different email
             </button>
@@ -562,17 +562,17 @@ export function UploadZone() {
         {/* ── STATE: partial_preview ── */}
         {state === "partial_preview" && analysisData?.preview && (
           <div className="space-y-6">
-            <div className="rounded-3xl p-8 bg-white/80 backdrop-blur-xl shadow-lg border border-cyan-200">
+            <div className="rounded-3xl p-8 bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-200">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <p className="text-slate-500 text-sm mb-1">Overall Score</p>
+                  <p className="text-slate-700 text-sm mb-1">Overall Score</p>
                   <div className="flex items-baseline gap-3">
                     <span className="text-5xl font-bold text-slate-900 font-mono">{analysisData.preview.score ?? "--"}</span>
-                    <span className="text-slate-400 text-lg">/100</span>
+                    <span className="text-slate-700 text-lg">/100</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-slate-500 text-sm mb-1">Grade</p>
+                  <p className="text-slate-700 text-sm mb-1">Grade</p>
                   <span className="text-4xl font-bold text-cyan-600 font-mono">{analysisData.preview.grade ?? "--"}</span>
                 </div>
               </div>
@@ -582,8 +582,8 @@ export function UploadZone() {
                 ))}
               </div>
               {Array.isArray(analysisData.preview.findings) && analysisData.preview.findings.length > 0 && (
-                <div className="rounded-xl p-4 bg-slate-50 border border-slate-200">
-                  <p className="text-slate-400 text-xs font-mono uppercase tracking-wider mb-3">Key Findings</p>
+                <div className="rounded-xl p-4 bg-white/60 border border-cyan-500/15">
+                  <p className="text-slate-700 text-xs font-mono uppercase tracking-wider mb-3">Key Findings</p>
                   <ul className="space-y-2">
                     {analysisData.preview.findings.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
@@ -597,14 +597,14 @@ export function UploadZone() {
             </div>
 
             {/* Phone gate */}
-            <div className="rounded-3xl p-8 bg-white/80 backdrop-blur-xl shadow-lg border border-cyan-200">
+            <div className="rounded-3xl p-8 bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-200">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-cyan-50 border border-cyan-200">
                   <Lock className="w-5 h-5 text-cyan-600" />
                 </div>
                 <div>
                   <p className="text-slate-900 font-semibold">Unlock Full Analysis</p>
-                  <p className="text-slate-500 text-xs">Verify your phone to see exact dollar amounts and line-item breakdowns.</p>
+                  <p className="text-slate-700 text-xs">Verify your phone to see exact dollar amounts and line-item breakdowns.</p>
                 </div>
               </div>
               <div className="space-y-3">
@@ -614,12 +614,12 @@ export function UploadZone() {
                   onChange={(e) => setPhone(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handlePhoneSubmit()}
                   placeholder="(561) 555-0100"
-                  className="w-full px-4 py-3 rounded-xl text-slate-900 placeholder-slate-400 bg-white border border-slate-200 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-xl text-slate-900 placeholder-slate-400 bg-white border border-cyan-500/15 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors text-sm"
                 />
                 <button
                   onClick={handlePhoneSubmit}
                   disabled={!phone.trim() || isPhoneLoading}
-                  className="w-full py-3 rounded-xl font-bold text-sm text-white bg-cyan-600 hover:bg-cyan-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isPhoneLoading ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
@@ -634,12 +634,12 @@ export function UploadZone() {
 
         {/* ── STATE: otp_gate ── */}
         {state === "otp_gate" && (
-          <div className="rounded-3xl p-8 text-center bg-white/80 backdrop-blur-xl shadow-lg border border-cyan-200">
+          <div className="rounded-3xl p-8 text-center bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-200">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5 bg-cyan-50 border border-cyan-200">
               <Phone className="w-6 h-6 text-cyan-600" />
             </div>
             <h3 className="text-slate-900 font-bold text-xl mb-2">Enter verification code</h3>
-            <p className="text-slate-600 text-sm mb-1">
+            <p className="text-slate-800 text-sm mb-1">
               We sent a 6-digit code to <strong className="text-slate-900">{e164Phone}</strong>
             </p>
             <button
@@ -652,14 +652,14 @@ export function UploadZone() {
               <OTPInput onComplete={handleOTPComplete} disabled={verifyPhoneOTPMutation.isPending} />
             </div>
             {verifyPhoneOTPMutation.isPending && (
-              <div className="flex items-center justify-center gap-2 text-slate-500 text-sm mb-4">
+              <div className="flex items-center justify-center gap-2 text-slate-700 text-sm mb-4">
                 <Loader2 className="w-4 h-4 animate-spin" /> Verifying...
               </div>
             )}
             <button
               onClick={handleResendOTP}
               disabled={resendCooldown > 0 || sendPhoneOTPMutation.isPending}
-              className="text-slate-400 text-sm hover:text-slate-700 transition-colors disabled:opacity-40 flex items-center gap-1 mx-auto"
+              className="text-slate-700 text-sm hover:text-slate-700 transition-colors disabled:opacity-40 flex items-center gap-1 mx-auto"
             >
               <RefreshCw className="w-3 h-3" />
               {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
@@ -691,13 +691,13 @@ export function UploadZone() {
 
         {/* ── STATE: purged ── */}
         {state === "purged" && (
-          <div className="rounded-3xl p-10 text-center bg-white/80 backdrop-blur-xl shadow-lg border border-amber-200">
+          <div className="rounded-3xl p-10 text-center bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-amber-200">
             <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-4" />
             <h3 className="text-slate-900 font-bold text-xl mb-2">Upload expired</h3>
-            <p className="text-slate-500 text-sm mb-6">Your temporary file was removed after 6 hours. Please re-upload your quote to continue.</p>
+            <p className="text-slate-700 text-sm mb-6">Your temporary file was removed after 6 hours. Please re-upload your quote to continue.</p>
             <button
               onClick={() => { setState("idle"); setFile(null); setAnalysisData(null); setEmail(""); setPhone(""); }}
-              className="px-6 py-3 rounded-xl font-bold text-sm text-white bg-cyan-600 hover:bg-cyan-700 transition-colors shadow-lg shadow-cyan-600/25"
+              className="px-6 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)] transition-colors shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)]"
             >
               Re-upload Quote
             </button>

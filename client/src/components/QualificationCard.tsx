@@ -57,7 +57,7 @@ function OTPInput({ onComplete }: { onComplete: (code: string) => void }) {
           className="w-12 h-14 text-center text-xl font-bold font-mono rounded-lg border-2 text-slate-900 focus:outline-none transition-all duration-200"
           style={{
             background: digit ? "rgba(8,145,178,0.05)" : "white",
-            borderColor: digit ? "#0891B2" : "#E2E8F0",
+            borderColor: digit ? "#0891B2" : "#CBD5E1",
             boxShadow: digit ? "0 0 12px rgba(8,145,178,0.15)" : "none",
           }}
         />
@@ -170,26 +170,26 @@ export function QualificationCard() {
       <div className="relative z-10 container max-w-2xl">
         {/* Section label */}
         <div className={`flex items-center gap-2 mb-4 transition-all duration-600 ${isInView ? "opacity-100" : "opacity-0"}`}>
-          <UserPlus className="w-4 h-4 text-cyan-600" />
-          <span className="font-mono text-xs text-cyan-600 uppercase tracking-widest">Flow B — Quick Assessment</span>
+          <UserPlus className="w-4 h-4 text-cyan-700" />
+          <span className="font-mono text-xs text-cyan-700 font-bold uppercase tracking-widest">Flow B — Quick Assessment</span>
         </div>
 
-        <h2 className={`text-3xl sm:text-4xl font-bold text-slate-900 mb-3 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+        <h2 className={`text-3xl sm:text-4xl font-extrabold text-slate-900 mb-3 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
           Tell Us About <span className="text-cyan-600">Your Project</span>
         </h2>
-        <p className={`text-slate-500 text-lg mb-10 transition-all duration-700 delay-200 ${isInView ? "opacity-100" : "opacity-0"}`}>
+        <p className={`text-slate-700 font-medium text-lg mb-10 transition-all duration-700 delay-200 ${isInView ? "opacity-100" : "opacity-0"}`}>
           Quick assessment to match you with the right contractors.
         </p>
 
         {/* ── Step: Success ── */}
         {step === "success" && (
-          <div className="rounded-2xl p-10 text-center bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200">
+          <div className="rounded-2xl p-10 text-center bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-500/15">
             <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-slate-900 mb-3">You're Verified!</h3>
-            <p className="text-slate-500 mb-2">
+            <p className="text-slate-700 mb-2">
               A WindowMan expert will contact you shortly at <span className="text-slate-900 font-semibold">{e164Phone}</span>.
             </p>
-            <p className="text-slate-400 text-sm font-mono mt-2">
+            <p className="text-slate-700 text-sm font-mono font-medium mt-2">
               Check your phone — we've sent you a confirmation text.
             </p>
           </div>
@@ -197,16 +197,16 @@ export function QualificationCard() {
 
         {/* ── Step: OTP Input ── */}
         {step === "otp" && (
-          <div className="rounded-2xl p-8 bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200">
+          <div className="rounded-2xl p-8 bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-500/15">
             <div className="flex items-center gap-3 mb-6">
               <Shield className="w-6 h-6 text-cyan-600" />
               <div>
                 <h3 className="font-bold text-slate-900">Verify Your Number</h3>
-                <p className="text-slate-400 text-sm">Code sent to <span className="text-slate-900 font-semibold">{e164Phone}</span></p>
+                <p className="text-slate-700 text-sm">Code sent to <span className="text-slate-900 font-semibold">{e164Phone}</span></p>
               </div>
             </div>
 
-            <p className="text-slate-500 text-sm mb-6">Enter the 6-digit code from your SMS:</p>
+            <p className="text-slate-700 text-sm mb-6">Enter the 6-digit code from your SMS:</p>
 
             <OTPInput onComplete={handleOTPComplete} />
 
@@ -218,18 +218,18 @@ export function QualificationCard() {
             )}
 
             {/* Resend + Edit Number */}
-            <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-100">
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200">
               <button
                 onClick={handleResend}
                 disabled={resendCooldown > 0 || sendOTPMutation.isPending}
-                className="flex items-center gap-2 text-sm text-slate-400 hover:text-cyan-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 text-sm text-slate-700 hover:text-cyan-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
               </button>
               <button
                 onClick={handleEditNumber}
-                className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-700 transition-colors"
+                className="flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900 transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Wrong number? Edit
@@ -240,7 +240,7 @@ export function QualificationCard() {
 
         {/* ── Step: Form ── */}
         {step === "form" && (
-          <div className={`rounded-2xl p-6 sm:p-8 bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200 transition-all duration-700 delay-300 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+          <div className={`rounded-2xl p-6 sm:p-8 bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-500/15 transition-all duration-700 delay-300 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
             {/* Honeypot field */}
             <div style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden", opacity: 0, pointerEvents: "none", tabIndex: -1 } as React.CSSProperties}>
               <label htmlFor="wm_website">Website</label>
@@ -265,7 +265,7 @@ export function QualificationCard() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Maria G."
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-cyan-500/15 text-slate-900 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors"
                 />
               </div>
               <div>
@@ -278,7 +278,7 @@ export function QualificationCard() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="(561) 000-0000"
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-cyan-500/15 text-slate-900 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors"
                 />
               </div>
             </div>
@@ -288,7 +288,7 @@ export function QualificationCard() {
               {questions.map((q) => (
                 <div key={q.key} className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <q.icon className="w-4 h-4 text-slate-400" />
+                    <q.icon className="w-4 h-4 text-slate-700" />
                     <label className="font-semibold text-slate-900 text-sm">{q.question}</label>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -301,7 +301,7 @@ export function QualificationCard() {
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             isSelected
                               ? "bg-cyan-50 border border-cyan-400 text-cyan-700"
-                              : "bg-slate-50 border border-slate-200 text-slate-500 hover:border-cyan-300 hover:text-slate-700"
+                              : "bg-white/60 border border-cyan-500/15 text-slate-700 hover:border-cyan-300 hover:text-slate-900"
                           }`}
                         >
                           {isSelected && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1.5" />}
@@ -321,7 +321,7 @@ export function QualificationCard() {
               disabled={!isFormComplete || isLoading}
               className={`w-full py-3.5 rounded-xl font-bold text-white transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isFormComplete
-                  ? "bg-cyan-600 hover:bg-cyan-700 shadow-lg shadow-cyan-600/25"
+                  ? "bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)]"
                   : "bg-slate-300"
               }`}
             >
@@ -331,7 +331,7 @@ export function QualificationCard() {
                 <><Shield className="w-4 h-4" />Connect Me — Send Verification Code</>
               )}
             </button>
-            <p className="text-xs text-slate-400 font-mono mt-3 text-center">
+            <p className="text-xs text-slate-700 font-mono font-medium mt-3 text-center">
               We verify your mobile number to eliminate fake leads. No spam, ever.
             </p>
           </div>
