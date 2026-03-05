@@ -29,6 +29,7 @@ import { useOtpCooldown } from "@/hooks/useOtpCooldown";
 import { firePhoneVerifiedConversion, hashPii } from "@/lib/pixels";
 import QuoteRevealGate from "@/components/analysis/QuoteRevealGate";
 import AnalysisReport from "@/pages/analysis-report";
+import { DownloadReportButton } from "@/components/analysis/DownloadReportButton";
 import type { ScoredResult } from "@shared/scoredTypes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -726,12 +727,23 @@ export default function AnalysisPreview() {
         {/* ── STATE: full_analysis ── */}
         {pageState === "full_analysis" && analysisId && (
           fullAnalysis?.scored ? (
-            <QuoteRevealGate scanId={analysisId} scored={fullAnalysis.scored}>
-              <AnalysisReport signals={fullAnalysis.signals} scored={fullAnalysis.scored} />
-            </QuoteRevealGate>
+            <>
+              <div className="mb-6 flex justify-end">
+                <DownloadReportButton
+                  scanId={analysisId}
+                  contractorName={String(fullAnalysis.identity?.contractor_name ?? "Quote")}
+                  scored={fullAnalysis.scored}
+                  signals={fullAnalysis.signals}
+                  variant="primary"
+                />
+              </div>
+              <QuoteRevealGate scanId={analysisId} scored={fullAnalysis.scored}>
+                <AnalysisReport signals={fullAnalysis.signals} scored={fullAnalysis.scored} />
+              </QuoteRevealGate>
+            </>
           ) : (
             /* Return visit: isFullUnlocked but no fullJson in memory — show preview with unlocked badge */
-            <div>
+            <>
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-2">
                   <Unlock className="w-4 h-4 text-emerald-400" />
@@ -748,7 +760,7 @@ export default function AnalysisPreview() {
                   />
                 </div>
               )}
-            </div>
+            </>
           )
         )}
 

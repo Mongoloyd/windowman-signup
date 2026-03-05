@@ -240,3 +240,110 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 217, 255, 0.4);
 }
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRINT STYLESHEET — PDF Export Optimization
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media print {
+  /* Force light background for print */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide app chrome and non-print elements */
+  .print-hidden,
+  header,
+  nav,
+  footer,
+  .sticky,
+  [class*="sticky"],
+  button:not(.print-button),
+  input,
+  textarea,
+  select {
+    display: none !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+
+  /* Ensure text is visible */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    background-image: none !important;
+  }
+
+  /* Page breaks */
+  .print-page-break {
+    page-break-after: always;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Dark mode override for print */
+  .dark {
+    color-scheme: light;
+  }
+
+  /* Ensure links are visible */
+  a {
+    color: #0066cc;
+    text-decoration: underline;
+  }
+
+  /* Preserve colors for status pills and badges */
+  [class*="bg-rose"],
+  [class*="bg-amber"],
+  [class*="bg-emerald"],
+  [class*="bg-cyan"] {
+    background-color: inherit !important;
+    color: inherit !important;
+  }
+
+  /* Ensure tables are visible */
+  table {
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    border: 1px solid #ccc;
+    padding: 8px;
+  }
+
+  /* Prevent orphaned text */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Prevent image overflow */
+  img {
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure code blocks are readable */
+  pre,
+  code {
+    background-color: #f5f5f5 !important;
+    color: #000 !important;
+    border: 1px solid #ccc;
+    padding: 8px;
+    page-break-inside: avoid;
+  }
+}

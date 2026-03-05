@@ -237,3 +237,15 @@
 - [x] Fixed hardCaps → hardCap (singular object, not array) in analysis-report.tsx
 - [x] Added overchargeEstimate optional field to ScoredResult type
 - [x] 141/141 tests passing, 0 TS errors
+
+
+## Phase 2A: PDF Download Implementation (COMPLETE)
+- [x] Create reportPdf.ts utility (sanitizeFilenamePart, generateReportFilename, computeRiskLevel)
+- [x] Create ReportPrintView.tsx (print-safe component with 5-page PDF layout)
+- [x] Create DownloadReportButton.tsx (react-to-print trigger + analytics)
+- [x] Add DownloadReportButton import to AnalysisPreview.tsx
+- [x] Wire DownloadReportButton into full_analysis state
+- [x] Add print stylesheet to client/src/index.css
+- [x] Create reportPdf.test.ts with 14 unit tests
+- [x] Update vitest.config.ts to include client-side tests
+- [x] All tests passing (14/14)
