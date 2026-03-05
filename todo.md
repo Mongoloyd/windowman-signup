@@ -267,3 +267,12 @@
 - [x] Test error message mapping (4 tests)
 - [x] Test recovery action selection (3 tests)
 - [x] Test page state transitions (4 tests)
+
+## Compare Entry Point + Cookie Helper
+- [ ] resolveActiveLeadIdFromCookies helper in server/lib/sessionHelpers.ts
+- [ ] listAnalysesForLeadPicker DB helper in server/db.ts
+- [ ] analysis.listMyAnalyses tRPC procedure (cookie-auth, no leadId param)
+- [ ] CompareQuotePickerModal component
+- [ ] Compare entry point buttons in AnalysisPreview (top + sticky)
+- [ ] Analytics events: wm_compare_entry_clicked, wm_compare_challenger_selected, wm_compare_navigated
+- [ ] Tests: listMyAnalyses access control + exclusion logic

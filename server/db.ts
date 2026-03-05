@@ -237,7 +237,6 @@ export async function markAnalysisFailed(analysisId: string, errorCode: string):
 export async function getExpiredTempAnalyses(): Promise<Analysis[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const now = new Date();
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
   // Purge rows that are temp or processing and past their TTL
   const tempExpired = await db
@@ -415,4 +414,74 @@ export async function getAnalysisByHash(fileHash: string): Promise<Analysis | un
     .limit(1);
   // Return the first match regardless of status — caller decides whether to reuse
   return result[0];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANALYSES PICKER (Compare Quotes entry point)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * AnalysisPickerRow — safe metadata shape for the Compare Quotes picker modal.
+ *
+ * Security contract:
+ * - For full_unlocked analyses: grade/score come from previewJson (SafePreview shape).
+ * - For temp/persisted_email_verified analyses: grade/score come from previewJson only.
+ * - fullJson is NEVER included in this shape.
+ */
+export type AnalysisPickerRow = {
+  id: string;
+  createdAt: Date;
+  status: "processing" | "temp" | "persisted_email_verified" | "full_unlocked" | "failed" | "purged";
+  fileName: string | null;
+  /** previewJson column — SafePreview shape. Caller must parse. */
+  previewJson: unknown;
+};
+
+/**
+ * List analyses for the Compare Quotes picker modal.
+ *
+ * Returns only metadata-safe rows for a given leadId:
+ * - Excludes: processing, failed, purged
+ * - Includes: temp, persisted_email_verified, full_unlocked
+ * - Ordered by createdAt DESC (most recent first)
+ * - Limit: 1–50 (default 20)
+ *
+ * Caller is responsible for:
+ * - Resolving contractor labels via getContractorLabel()
+ * - Parsing previewJson as SafePreview
+ * - Excluding the current analysisId from the list
+ *
+ * @param leadId - UUID of the lead (must be verified by cookie before calling)
+ * @param limit  - max rows to return (1–50)
+ */
+export async function listAnalysesForLeadPicker(
+  leadId: string,
+  limit: number = 20
+): Promise<AnalysisPickerRow[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const safeLimit = Math.min(Math.max(1, limit), 50);
+
+  const rows = await db
+    .select({
+      id: analyses.id,
+      createdAt: analyses.createdAt,
+      status: analyses.status,
+      fileName: analyses.fileName,
+      previewJson: analyses.previewJson,
+    })
+    .from(analyses)
+    .where(eq(analyses.leadId, leadId))
+    .orderBy(desc(analyses.createdAt))
+    .limit(safeLimit * 3); // over-fetch to account for filtered-out rows
+
+  // Filter out processing/failed/purged in application layer
+  // (avoids complex Drizzle enum NOT IN syntax)
+  const EXCLUDED_STATUSES = new Set(["processing", "failed", "purged"]);
+  const filtered = rows
+    .filter((row) => !EXCLUDED_STATUSES.has(row.status))
+    .slice(0, safeLimit);
+
+  return filtered as AnalysisPickerRow[];
 }

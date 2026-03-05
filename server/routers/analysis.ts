@@ -45,6 +45,8 @@ import { randomBytes } from "crypto";
 import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/analysisEngine";
 import { compareFromSignals } from "../services/comparisonEngine";
 import { resolveCompareLabels } from "../services/labeling";
+import { resolveActiveLeadIdFromCookies } from "../lib/sessionHelpers";
+import { listAnalysesForLeadPicker } from "../db";
 import type { SafePreview } from "../scanner-brain";
 import { otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp, otpBackoff } from "../rateLimiter";
 
@@ -954,5 +956,65 @@ export const analysisRouter = router({
         },
         comparison,
       };
+    }),
+
+  /**
+   * List analyses for the Compare Quotes picker modal.
+   *
+   * Auth: cookie-based (wm_lead_session preferred, wm_email_session fallback).
+   * No leadId param — resolved server-side from cookies via resolveActiveLeadIdFromCookies.
+   *
+   * Returns safe metadata only:
+   * - id, createdAt, status, fileName, overallScore, finalGrade, riskLevel
+   * - fullJson is NEVER included
+   * - Excludes: processing, failed, purged
+   *
+   * Optionally excludes a specific analysisId (the current scan).
+   */
+  listMyAnalyses: publicProcedure
+    .input(
+      z.object({
+        /** Exclude this analysisId from the results (the currently viewed scan) */
+        excludeId: z.string().uuid().optional(),
+        /** Max results (1-20, default 10) */
+        limit: z.number().int().min(1).max(20).optional().default(10),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      // Resolve leadId from cookies — no leadId param accepted from client
+      const leadId = await resolveActiveLeadIdFromCookies(ctx.req.cookies);
+      if (!leadId) {
+        // Return empty list rather than throwing — caller handles gracefully
+        console.warn("[listMyAnalyses] No active session cookie found — returning empty list");
+        return { analyses: [], leadId: null };
+      }
+
+      const fetchLimit = input.limit + (input.excludeId ? 1 : 0);
+      const rows = await listAnalysesForLeadPicker(leadId, fetchLimit);
+
+      // Exclude the current analysis from the picker list
+      const filtered = input.excludeId
+        ? rows.filter((r) => r.id !== input.excludeId)
+        : rows;
+
+      // Map to safe picker shape — never expose fullJson
+      const pickerItems = filtered.slice(0, input.limit).map((row) => {
+        const preview = row.previewJson as {
+          overallScore?: number;
+          finalGrade?: string;
+          riskLevel?: string;
+        } | null;
+        return {
+          id: row.id,
+          createdAt: row.createdAt,
+          status: row.status,
+          fileName: row.fileName,
+          overallScore: preview?.overallScore ?? null,
+          finalGrade: preview?.finalGrade ?? null,
+          riskLevel: preview?.riskLevel ?? null,
+        };
+      });
+
+      return { analyses: pickerItems, leadId };
     }),
 });

@@ -30,6 +30,8 @@ import { firePhoneVerifiedConversion, hashPii } from "@/lib/pixels";
 import QuoteRevealGate from "@/components/analysis/QuoteRevealGate";
 import AnalysisReport from "@/pages/analysis-report";
 import { DownloadReportButton } from "@/components/analysis/DownloadReportButton";
+import { CompareQuotePickerModal } from "@/components/compare/CompareQuotePickerModal";
+import { GitCompare } from "lucide-react";
 import type { ScoredResult } from "@shared/scoredTypes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -221,6 +223,7 @@ function GradeBadge({ grade, score, size = "lg" }: { grade: string; score: numbe
 
 export default function AnalysisPreview() {
   const [, navigate] = useLocation();
+  const [compareModalOpen, setCompareModalOpen] = useState(false);
 
   // Parse URL params
   const params = new URLSearchParams(window.location.search);
@@ -728,7 +731,20 @@ export default function AnalysisPreview() {
         {pageState === "full_analysis" && analysisId && (
           fullAnalysis?.scored ? (
             <>
-              <div className="mb-6 flex justify-end">
+              <div className="mb-6 flex items-center justify-end gap-3">
+                {/* Compare Quotes entry point */}
+                <button
+                  onClick={() => setCompareModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-all duration-150 hover:border-cyan-400/40"
+                  style={{
+                    background: "rgba(34,211,238,0.06)",
+                    borderColor: "rgba(34,211,238,0.2)",
+                    color: "#22D3EE",
+                  }}
+                >
+                  <GitCompare className="w-4 h-4" />
+                  Compare Quotes
+                </button>
                 <DownloadReportButton
                   scanId={analysisId}
                   contractorName={String(fullAnalysis.identity?.contractor_name ?? "Quote")}
@@ -737,6 +753,13 @@ export default function AnalysisPreview() {
                   variant="primary"
                 />
               </div>
+              {/* Compare Quote Picker Modal */}
+              <CompareQuotePickerModal
+                currentAnalysisId={analysisId}
+                leadId={leadId}
+                open={compareModalOpen}
+                onClose={() => setCompareModalOpen(false)}
+              />
               <QuoteRevealGate scanId={analysisId} scored={fullAnalysis.scored}>
                 <AnalysisReport signals={fullAnalysis.signals} scored={fullAnalysis.scored} />
               </QuoteRevealGate>
