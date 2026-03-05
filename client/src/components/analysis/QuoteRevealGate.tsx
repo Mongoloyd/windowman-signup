@@ -1,33 +1,45 @@
-import React, { useState, useEffect } from 'react';
-    import QuoteAnalysisTheater from './QuoteAnalysisTheater';
-    
-    interface GateProps {
-      scanId: string;
-      scored: any;
-      children: React.ReactNode;
-    }
-    
-    const QuoteRevealGate = ({ scanId, scored, children }: GateProps) => {
-      const [showTheater, setShowTheater] = useState(false);
-      const [loading, setLoading] = useState(true);
-    
-      useEffect(() => {
-        const hasSeen = localStorage.getItem(`seen_theater_${scanId}`);
-        if (!hasSeen) {
-          setShowTheater(true);
-        }
-        setLoading(false);
-      }, [scanId]);
-    
-      const handleComplete = () => {
-        localStorage.setItem(`seen_theater_${scanId}`, 'true');
+import React, { useEffect, useMemo, useState } from "react";
+import QuoteAnalysisTheater from "./QuoteAnalysisTheater";
+
+type Props = {
+  scanId: string;
+  scored: any;
+  children: React.ReactNode;
+};
+
+function keyFor(scanId: string) {
+  return `wm_theater_seen:${scanId}`;
+}
+
+export default function QuoteRevealGate({ scanId, scored, children }: Props) {
+  const storageKey = useMemo(() => keyFor(scanId), [scanId]);
+  const [showTheater, setShowTheater] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem(storageKey) === "1";
+      if (seen) {
+        setReady(true);
         setShowTheater(false);
-      };
-    
-      if (loading) return null;
-      if (showTheater) return <QuoteAnalysisTheater scored={scored} onComplete={handleComplete} />;
-      
-      return <>{children}</>;
-    };
-    
-    export default QuoteRevealGate;
+        return;
+      }
+    } catch { }
+    setShowTheater(true);
+  }, [storageKey]);
+
+  const complete = () => {
+    try {
+      localStorage.setItem(storageKey, "1");
+    } catch { }
+    setShowTheater(false);
+    setReady(true);
+  };
+
+  return (
+    <>
+      {showTheater && <QuoteAnalysisTheater scanId={scanId} scored={scored} onComplete={complete} />}
+      {ready && children}
+    </>
+  );
+}
