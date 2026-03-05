@@ -13,7 +13,7 @@ import { Footer } from "@/components/Footer";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#0F1419] text-[#E2E8F0] overflow-x-hidden">
+    <div className="min-h-screen bg-transparent text-slate-900 overflow-x-hidden">
       {/* Persistent scan line effect */}
       <ScanLine />
 

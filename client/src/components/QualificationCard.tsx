@@ -54,10 +54,11 @@ function OTPInput({ onComplete }: { onComplete: (code: string) => void }) {
           value={digit}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
-          className="w-12 h-14 text-center text-xl font-bold font-[var(--font-mono)] rounded-lg bg-[rgba(255,255,255,0.04)] border-2 text-white focus:outline-none transition-all duration-200"
+          className="w-12 h-14 text-center text-xl font-bold font-mono rounded-lg border-2 text-slate-900 focus:outline-none transition-all duration-200"
           style={{
-            borderColor: digit ? "#0066CC" : "rgba(255,255,255,0.1)",
-            boxShadow: digit ? "0 0 12px rgba(0,102,204,0.3)" : "none",
+            background: digit ? "rgba(8,145,178,0.05)" : "white",
+            borderColor: digit ? "#0891B2" : "#E2E8F0",
+            boxShadow: digit ? "0 0 12px rgba(8,145,178,0.15)" : "none",
           }}
         />
       ))}
@@ -74,14 +75,8 @@ export function QualificationCard() {
   const [leadId, setLeadId] = useState<string | null>(null);
   const [e164Phone, setE164Phone] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
-  /**
-   * Honeypot field — invisible to humans, filled by bots.
-   * Never shown in the UI (CSS hidden, not type=hidden so bots see it in the DOM).
-   * Passed to the server on submit; non-empty value flags the lead as fraud.
-   */
   const [honeypot, setHoneypot] = useState("");
 
-  // Countdown timer for resend
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
@@ -92,7 +87,6 @@ export function QualificationCard() {
     onSuccess: (data) => {
       setLeadId(data.leadId);
       setE164Phone(data.phone);
-      // Trigger OTP
       sendOTPMutation.mutate({ phone: data.phone });
     },
     onError: (err) => {
@@ -140,7 +134,7 @@ export function QualificationCard() {
       phone: normalizePhone(phone),
       source: "flow_b",
       answers,
-      honeypot, // empty for humans, filled by bots
+      honeypot,
     });
   };
 
@@ -171,31 +165,31 @@ export function QualificationCard() {
 
   return (
     <section ref={ref} id="qualification-section" className="relative py-24 overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: "linear-gradient(90deg, transparent, rgba(0,102,204,0.4), transparent)" }} />
+      <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: "linear-gradient(90deg, transparent, rgba(8,145,178,0.3), transparent)" }} />
 
       <div className="relative z-10 container max-w-2xl">
         {/* Section label */}
         <div className={`flex items-center gap-2 mb-4 transition-all duration-600 ${isInView ? "opacity-100" : "opacity-0"}`}>
-          <UserPlus className="w-4 h-4 text-[#0066CC]" />
-          <span className="font-[var(--font-mono)] text-xs text-[#0066CC] uppercase tracking-widest">Flow B — Quick Assessment</span>
+          <UserPlus className="w-4 h-4 text-cyan-600" />
+          <span className="font-mono text-xs text-cyan-600 uppercase tracking-widest">Flow B — Quick Assessment</span>
         </div>
 
-        <h2 className={`font-[var(--font-display)] text-3xl sm:text-4xl font-bold text-white mb-3 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-          Tell Us About <span className="text-[#0066CC]">Your Project</span>
+        <h2 className={`text-3xl sm:text-4xl font-bold text-slate-900 mb-3 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+          Tell Us About <span className="text-cyan-600">Your Project</span>
         </h2>
-        <p className={`text-[#64748B] text-lg mb-10 transition-all duration-700 delay-200 ${isInView ? "opacity-100" : "opacity-0"}`}>
+        <p className={`text-slate-500 text-lg mb-10 transition-all duration-700 delay-200 ${isInView ? "opacity-100" : "opacity-0"}`}>
           Quick assessment to match you with the right contractors.
         </p>
 
         {/* ── Step: Success ── */}
         {step === "success" && (
-          <div className="glass-card rounded-2xl p-10 text-center">
-            <CheckCircle className="w-16 h-16 text-[#10B981] mx-auto mb-4" />
-            <h3 className="font-[var(--font-display)] text-2xl font-bold text-white mb-3">You're Verified!</h3>
-            <p className="text-[#94A3B8] mb-2">
-              A WindowMan expert will contact you shortly at <span className="text-white font-semibold">{e164Phone}</span>.
+          <div className="rounded-2xl p-10 text-center bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200">
+            <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-slate-900 mb-3">You're Verified!</h3>
+            <p className="text-slate-500 mb-2">
+              A WindowMan expert will contact you shortly at <span className="text-slate-900 font-semibold">{e164Phone}</span>.
             </p>
-            <p className="text-[#64748B] text-sm font-[var(--font-mono)] mt-2">
+            <p className="text-slate-400 text-sm font-mono mt-2">
               Check your phone — we've sent you a confirmation text.
             </p>
           </div>
@@ -203,39 +197,39 @@ export function QualificationCard() {
 
         {/* ── Step: OTP Input ── */}
         {step === "otp" && (
-          <div className="glass-card rounded-2xl p-8">
+          <div className="rounded-2xl p-8 bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200">
             <div className="flex items-center gap-3 mb-6">
-              <Shield className="w-6 h-6 text-[#0066CC]" />
+              <Shield className="w-6 h-6 text-cyan-600" />
               <div>
-                <h3 className="font-[var(--font-display)] font-bold text-white">Verify Your Number</h3>
-                <p className="text-[#64748B] text-sm">Code sent to <span className="text-white">{e164Phone}</span></p>
+                <h3 className="font-bold text-slate-900">Verify Your Number</h3>
+                <p className="text-slate-400 text-sm">Code sent to <span className="text-slate-900 font-semibold">{e164Phone}</span></p>
               </div>
             </div>
 
-            <p className="text-[#94A3B8] text-sm mb-6">Enter the 6-digit code from your SMS:</p>
+            <p className="text-slate-500 text-sm mb-6">Enter the 6-digit code from your SMS:</p>
 
             <OTPInput onComplete={handleOTPComplete} />
 
             {verifyOTPMutation.isPending && (
-              <div className="flex items-center justify-center gap-2 mt-4 text-[#0066CC]">
+              <div className="flex items-center justify-center gap-2 mt-4 text-cyan-600">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm font-[var(--font-mono)]">Verifying...</span>
+                <span className="text-sm font-mono">Verifying...</span>
               </div>
             )}
 
             {/* Resend + Edit Number */}
-            <div className="flex items-center justify-between mt-6 pt-6 border-t border-[rgba(255,255,255,0.06)]">
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-100">
               <button
                 onClick={handleResend}
                 disabled={resendCooldown > 0 || sendOTPMutation.isPending}
-                className="flex items-center gap-2 text-sm text-[#64748B] hover:text-[#0066CC] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 text-sm text-slate-400 hover:text-cyan-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
               </button>
               <button
                 onClick={handleEditNumber}
-                className="flex items-center gap-2 text-sm text-[#64748B] hover:text-white transition-colors"
+                className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-700 transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Wrong number? Edit
@@ -246,9 +240,8 @@ export function QualificationCard() {
 
         {/* ── Step: Form ── */}
         {step === "form" && (
-          <div className={`glass-card rounded-2xl p-6 sm:p-8 transition-all duration-700 delay-300 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-            {/* Honeypot field — invisible to humans, visible to bots in the DOM */}
-            {/* CSS hidden (not type=hidden) so bots that parse HTML will fill it */}
+          <div className={`rounded-2xl p-6 sm:p-8 bg-white/80 backdrop-blur-xl shadow-lg border border-slate-200 transition-all duration-700 delay-300 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+            {/* Honeypot field */}
             <div style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden", opacity: 0, pointerEvents: "none", tabIndex: -1 } as React.CSSProperties}>
               <label htmlFor="wm_website">Website</label>
               <input
@@ -266,18 +259,18 @@ export function QualificationCard() {
             {/* Name + Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block font-[var(--font-display)] font-semibold text-white text-sm mb-2">Your Name</label>
+                <label className="block font-semibold text-slate-900 text-sm mb-2">Your Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Maria G."
-                  className="w-full px-4 py-3 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[rgba(0,102,204,0.2)] text-white placeholder-[#475569] text-sm focus:outline-none focus:border-[#0066CC] transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors"
                 />
               </div>
               <div>
-                <label className="block font-[var(--font-display)] font-semibold text-white text-sm mb-2">
-                  <Phone className="w-3.5 h-3.5 inline mr-1.5 text-[#0066CC]" />
+                <label className="block font-semibold text-slate-900 text-sm mb-2">
+                  <Phone className="w-3.5 h-3.5 inline mr-1.5 text-cyan-600" />
                   Mobile Number
                 </label>
                 <input
@@ -285,7 +278,7 @@ export function QualificationCard() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="(561) 000-0000"
-                  className="w-full px-4 py-3 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[rgba(0,102,204,0.2)] text-white placeholder-[#475569] text-sm focus:outline-none focus:border-[#0066CC] transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-colors"
                 />
               </div>
             </div>
@@ -295,8 +288,8 @@ export function QualificationCard() {
               {questions.map((q) => (
                 <div key={q.key} className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <q.icon className="w-4 h-4 text-[#64748B]" />
-                    <label className="font-[var(--font-display)] font-semibold text-white text-sm">{q.question}</label>
+                    <q.icon className="w-4 h-4 text-slate-400" />
+                    <label className="font-semibold text-slate-900 text-sm">{q.question}</label>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {q.options.map((option) => {
@@ -305,10 +298,10 @@ export function QualificationCard() {
                         <button
                           key={option}
                           onClick={() => handleSelect(q.key, option)}
-                          className={`px-4 py-2 rounded-lg text-sm font-[var(--font-body)] font-medium transition-all duration-200 ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             isSelected
-                              ? "bg-[rgba(0,102,204,0.2)] border border-[#0066CC] text-[#0066CC]"
-                              : "bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] text-[#94A3B8] hover:border-[rgba(0,102,204,0.3)] hover:text-white"
+                              ? "bg-cyan-50 border border-cyan-400 text-cyan-700"
+                              : "bg-slate-50 border border-slate-200 text-slate-500 hover:border-cyan-300 hover:text-slate-700"
                           }`}
                         >
                           {isSelected && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1.5" />}
@@ -321,16 +314,16 @@ export function QualificationCard() {
               ))}
             </div>
 
-            <div className="my-8 h-[1px]" style={{ background: "linear-gradient(90deg, transparent, rgba(0,102,204,0.2), transparent)" }} />
+            <div className="my-8 h-[1px]" style={{ background: "linear-gradient(90deg, transparent, rgba(8,145,178,0.15), transparent)" }} />
 
             <button
               onClick={handleSubmit}
               disabled={!isFormComplete || isLoading}
-              className="w-full py-3.5 rounded-xl font-[var(--font-display)] font-bold text-white transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: isFormComplete ? "#0066CC" : "#243044",
-                boxShadow: isFormComplete ? "0 0 20px rgba(0,102,204,0.3)" : "none",
-              }}
+              className={`w-full py-3.5 rounded-xl font-bold text-white transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isFormComplete
+                  ? "bg-cyan-600 hover:bg-cyan-700 shadow-lg shadow-cyan-600/25"
+                  : "bg-slate-300"
+              }`}
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" />Checking number...</>
@@ -338,7 +331,7 @@ export function QualificationCard() {
                 <><Shield className="w-4 h-4" />Connect Me — Send Verification Code</>
               )}
             </button>
-            <p className="text-xs text-[#475569] font-[var(--font-mono)] mt-3 text-center">
+            <p className="text-xs text-slate-400 font-mono mt-3 text-center">
               We verify your mobile number to eliminate fake leads. No spam, ever.
             </p>
           </div>

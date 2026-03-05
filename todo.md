@@ -269,10 +269,28 @@
 - [x] Test page state transitions (4 tests)
 
 ## Compare Entry Point + Cookie Helper
-- [ ] resolveActiveLeadIdFromCookies helper in server/lib/sessionHelpers.ts
-- [ ] listAnalysesForLeadPicker DB helper in server/db.ts
-- [ ] analysis.listMyAnalyses tRPC procedure (cookie-auth, no leadId param)
-- [ ] CompareQuotePickerModal component
-- [ ] Compare entry point buttons in AnalysisPreview (top + sticky)
-- [ ] Analytics events: wm_compare_entry_clicked, wm_compare_challenger_selected, wm_compare_navigated
-- [ ] Tests: listMyAnalyses access control + exclusion logic
+- [x] resolveActiveLeadIdFromCookies helper in server/lib/sessionHelpers.ts
+- [x] listAnalysesForLeadPicker DB helper in server/db.ts
+- [x] analysis.listMyAnalyses tRPC procedure (cookie-auth, no leadId param)
+- [x] CompareQuotePickerModal component
+- [x] Compare entry point buttons in AnalysisPreview (top + sticky)
+- [x] Analytics events: wm_compare_entry_clicked, wm_compare_challenger_selected, wm_compare_navigated
+- [x] Tests: listMyAnalyses access control + exclusion logic
+
+## Force Light Mode Fix
+- [x] Kill dark mode in index.html (remove class="dark")
+- [x] Fix fonts: add Inter + Poppins import to index.css
+- [x] Force body styles: bg #FAFBFC, color #0F172A, Inter font
+- [x] Force ThemeProvider to light in App.tsx
+- [x] Strip dark colors from HeroSection.tsx
+- [x] Strip dark colors from ProblemSection.tsx
+- [x] Strip dark colors from HowItWorksSection.tsx
+- [x] Strip dark colors from UploadZone.tsx
+- [x] Strip dark colors from Header.tsx
+- [x] Strip dark colors from Footer.tsx
+- [x] Strip dark colors from TestimonialSection.tsx
+- [x] Strip dark colors from TrustSection.tsx
+- [x] Strip dark colors from ScanningState.tsx
+- [x] Strip dark colors from UrgencyTicker.tsx
+- [x] Strip dark colors from AnalysisReveal.tsx
+- [x] Strip dark colors from QualificationCard.tsx
