@@ -756,7 +756,6 @@ export default function AnalysisPreview() {
               {/* Compare Quote Picker Modal */}
               <CompareQuotePickerModal
                 currentAnalysisId={analysisId}
-                leadId={leadId}
                 open={compareModalOpen}
                 onClose={() => setCompareModalOpen(false)}
               />

@@ -46,6 +46,7 @@ import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/ana
 import { compareFromSignals } from "../services/comparisonEngine";
 import { resolveCompareLabels } from "../services/labeling";
 import { resolveActiveLeadIdFromCookies } from "../lib/sessionHelpers";
+import { resolveContractorLabel } from "../lib/contractorLabel";
 import { listAnalysesForLeadPicker } from "../db";
 import type { SafePreview } from "../scanner-brain";
 import { otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp, otpBackoff } from "../rateLimiter";
@@ -1004,6 +1005,27 @@ export const analysisRouter = router({
           finalGrade?: string;
           riskLevel?: string;
         } | null;
+
+        // Resolve contractor label from proofOfRead (safe — not fullJson)
+        const por = row.proofOfRead as {
+          contractor_name?: string | null;
+          company_name?: string | null;
+          license_holder?: string | null;
+          pdf_header_company?: string | null;
+          confidence_score?: number | null;
+        } | null;
+
+        const contractorLabel = resolveContractorLabel({
+          signals: {
+            contractor_name: por?.contractor_name ?? null,
+            company_name: por?.company_name ?? null,
+            license_holder: por?.license_holder ?? null,
+            pdf_header_company: por?.pdf_header_company ?? null,
+            confidence_score: por?.confidence_score ?? null,
+          },
+          fallback: "The Challenger",
+        });
+
         return {
           id: row.id,
           createdAt: row.createdAt,
@@ -1012,6 +1034,8 @@ export const analysisRouter = router({
           overallScore: preview?.overallScore ?? null,
           finalGrade: preview?.finalGrade ?? null,
           riskLevel: preview?.riskLevel ?? null,
+          /** Canonical contractor label — primary display in picker UI */
+          contractorLabel,
         };
       });
 

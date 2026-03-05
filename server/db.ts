@@ -435,6 +435,11 @@ export type AnalysisPickerRow = {
   fileName: string | null;
   /** previewJson column — SafePreview shape. Caller must parse. */
   previewJson: unknown;
+  /**
+   * proofOfRead column — contains contractor_name, confidence_score, etc.
+   * Safe to include in picker (NOT fullJson). Used for label resolution.
+   */
+  proofOfRead: unknown;
 };
 
 /**
@@ -470,6 +475,7 @@ export async function listAnalysesForLeadPicker(
       status: analyses.status,
       fileName: analyses.fileName,
       previewJson: analyses.previewJson,
+      proofOfRead: analyses.proofOfRead,
     })
     .from(analyses)
     .where(eq(analyses.leadId, leadId))

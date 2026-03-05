@@ -3,10 +3,15 @@
  *
  * Lets the user pick a second analysis to compare with the current one.
  * Calls listMyAnalyses (cookie-auth, no leadId param) and renders a list
- * of available scans. On selection, navigates to /compare/:idA/:idB?lead=...
+ * of available scans. On selection, navigates to /compare/:idA/:idB
  *
  * Design tokens: SURFACE (#0F1419), SURFACE_INSET (#1A2030), cyan accent (#22D3EE).
  * Mobile: stacked, full-width. No horizontal scrolling.
+ *
+ * SPEC CHANGES (ContractorLabelResolver):
+ * - contractorLabel is now the PRIMARY display (from server-side resolveContractorLabel)
+ * - fileName is secondary (shown as subtitle only)
+ * - leadId is NO LONGER in the navigation URL (server resolves from cookie)
  */
 
 import React, { useState } from "react";
@@ -20,15 +25,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, GitCompare, FileText, AlertCircle, ChevronRight } from "lucide-react";
+import { Loader2, GitCompare, FileText, AlertCircle, ChevronRight, Building2 } from "lucide-react";
 import { fireDataLayerEvent } from "@/lib/pixels";
 
 interface CompareQuotePickerModalProps {
   /** The currently viewed analysis ID (will be excluded from the picker list) */
   currentAnalysisId: string;
-  /** The leadId from URL params — used for navigation to /compare route */
-  leadId: string | null;
   /** Whether the modal is open */
   open: boolean;
   /** Called when the modal should close */
@@ -45,7 +47,7 @@ function gradeColor(grade: string | null): string {
   return "text-rose-400";
 }
 
-/** Risk level badge variant */
+/** Risk level badge class */
 function riskBadgeClass(riskLevel: string | null): string {
   if (!riskLevel) return "bg-slate-700 text-slate-300";
   if (riskLevel === "Critical") return "bg-rose-900/60 text-rose-300 border border-rose-700/40";
@@ -60,7 +62,6 @@ function formatDate(d: Date): string {
 
 export function CompareQuotePickerModal({
   currentAnalysisId,
-  leadId,
   open,
   onClose,
 }: CompareQuotePickerModalProps) {
@@ -76,25 +77,23 @@ export function CompareQuotePickerModal({
   );
 
   const analyses = data?.analyses ?? [];
-  const resolvedLeadId = leadId ?? data?.leadId ?? null;
 
   function handleSelect(id: string) {
     setSelectedId(id);
   }
 
   function handleCompare() {
-    if (!selectedId || !resolvedLeadId) return;
+    if (!selectedId) return;
 
-    // Fire analytics event
+    // Fire analytics event — no leadId in payload (server resolves from cookie)
     fireDataLayerEvent({
       event: "wm_compare_challenger_selected",
       idA: currentAnalysisId,
       idB: selectedId,
-      leadId: resolvedLeadId,
     });
 
-    // Navigate to compare page
-    navigate(`/compare/${currentAnalysisId}/${selectedId}?lead=${resolvedLeadId}`);
+    // Navigate to compare page — NO leadId in URL (server resolves from cookie)
+    navigate(`/compare/${currentAnalysisId}/${selectedId}`);
     onClose();
   }
 
@@ -154,6 +153,14 @@ export function CompareQuotePickerModal({
             <div className="space-y-2">
               {analyses.map((item) => {
                 const isSelected = selectedId === item.id;
+                // contractorLabel is the canonical primary label from the server
+                const label = (item as typeof item & { contractorLabel?: string }).contractorLabel
+                  ?? item.fileName
+                  ?? "Untitled Quote";
+                const subtitle = (item as typeof item & { contractorLabel?: string }).contractorLabel
+                  ? (item.fileName ?? null)
+                  : null;
+
                 return (
                   <button
                     key={item.id}
@@ -169,14 +176,20 @@ export function CompareQuotePickerModal({
                     }}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      {/* Left: file name + date */}
+                      {/* Left: contractor label (primary) + filename (secondary) + date */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <FileText className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                          <span className="text-white text-sm font-medium truncate">
-                            {item.fileName ?? "Untitled Quote"}
+                          <Building2 className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                          <span className="text-white text-sm font-semibold truncate">
+                            {label}
                           </span>
                         </div>
+                        {subtitle && (
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <FileText className="w-3 h-3 text-slate-600 flex-shrink-0" />
+                            <span className="text-slate-500 text-xs truncate">{subtitle}</span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-slate-500 text-xs">
                             {formatDate(item.createdAt)}
@@ -229,7 +242,7 @@ export function CompareQuotePickerModal({
           </Button>
           <Button
             size="sm"
-            disabled={!selectedId || !resolvedLeadId}
+            disabled={!selectedId}
             onClick={handleCompare}
             className="gap-2 font-semibold"
             style={{
