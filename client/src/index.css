@@ -347,3 +347,31 @@
     page-break-inside: avoid;
   }
 }
+
+/* ─── Compare View: Anchor Highlight ─────────────────────────────────────── */
+.anchor-highlight {
+  outline: 2px solid rgb(6 182 212 / 0.8);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+/* ─── Compare View: Print-only content ───────────────────────────────────── */
+.compare-print-view {
+  display: none;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .compare-print-view {
+    display: block !important;
+  }
+
+  /* Ensure compare print view uses light colors */
+  .compare-print-view * {
+    color: #0f172a !important;
+    background: white !important;
+  }
+}

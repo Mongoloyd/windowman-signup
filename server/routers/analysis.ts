@@ -43,6 +43,8 @@ import { twilioClient } from "../twilio";
 import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
 import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/analysisEngine";
+import { compareFromSignals } from "../services/comparisonEngine";
+import { resolveCompareLabels } from "../services/labeling";
 import type { SafePreview } from "../scanner-brain";
 import { otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp, otpBackoff } from "../rateLimiter";
 
@@ -836,5 +838,121 @@ export const analysisRouter = router({
       }).catch(() => {});
 
       return { leadId: lead.id };
+    }),
+
+  /**
+   * Compare two analyses deterministically.
+   * Phase 1: Private only — both analyses must belong to the same lead.
+   * Never returns fullJson; uses signals + scored from fullJson internally.
+   */
+  compareQuotes: publicProcedure
+    .input(
+      z.object({
+        idA: z.string().uuid(),
+        idB: z.string().uuid(),
+        leadId: z.string().uuid(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { idA, idB, leadId } = input;
+
+      if (idA === idB) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot compare a quote with itself. Please select two different analyses.",
+        });
+      }
+
+      const [analysisA, analysisB] = await Promise.all([
+        getAnalysisById(idA),
+        getAnalysisById(idB),
+      ]);
+
+      if (!analysisA) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Quote A analysis not found." });
+      }
+      if (!analysisB) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Quote B analysis not found." });
+      }
+
+      // Phase 1: Both analyses must belong to the requesting lead
+      if (analysisA.leadId !== leadId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to Quote A." });
+      }
+      if (analysisB.leadId !== leadId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to Quote B." });
+      }
+
+      // Both must be fully unlocked (phone OTP verified)
+      if (analysisA.status !== "full_unlocked") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Quote A is not yet fully verified. Please complete phone verification first.",
+        });
+      }
+      if (analysisB.status !== "full_unlocked") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Quote B is not yet fully verified. Please complete phone verification first.",
+        });
+      }
+
+      // Parse fullJson for both analyses
+      const fullA = analysisA.fullJson as { signals: any; scored: any } | null;
+      const fullB = analysisB.fullJson as { signals: any; scored: any } | null;
+
+      if (!fullA?.signals || !fullA?.scored) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Quote A analysis data is incomplete." });
+      }
+      if (!fullB?.signals || !fullB?.scored) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Quote B analysis data is incomplete." });
+      }
+
+      // Resolve contractor labels (server-side, deterministic)
+      const { labelA, labelB } = resolveCompareLabels(
+        { signals: fullA.signals, analysisFileName: analysisA.fileName, fallbackName: "Quote A" },
+        { signals: fullB.signals, analysisFileName: analysisB.fileName, fallbackName: "The Challenger" }
+      );
+
+      // Run deterministic comparison engine
+      const comparison = compareFromSignals(
+        { id: idA, signals: fullA.signals, scored: fullA.scored },
+        { id: idB, signals: fullB.signals, scored: fullB.scored }
+      );
+
+      // Log analytics event
+      await logLeadEvent({
+        id: randomUUID(),
+        leadId,
+        eventName: "wm_compare_viewed",
+        eventId: `${leadId}_wm_compare_viewed_${idA}_${idB}`,
+        source: "server",
+        payload: {
+          idA,
+          idB,
+          winnerId: comparison.meta.winnerId,
+          decisionPath: comparison.meta.decisionPath,
+          confidence: comparison.meta.confidence,
+          deltaScore: comparison.meta.deltaScore,
+          effectiveDelta: comparison.pricing.effectiveDelta,
+        },
+      }).catch(() => {});
+
+      return {
+        input: { idA, idB },
+        quoteA: {
+          id: idA,
+          contractorLabel: labelA,
+          basePrice: typeof fullA.signals.total_price === "number" ? fullA.signals.total_price : null,
+          hasBasePrice: typeof fullA.signals.total_price === "number",
+        },
+        quoteB: {
+          id: idB,
+          contractorLabel: labelB,
+          basePrice: typeof fullB.signals.total_price === "number" ? fullB.signals.total_price : null,
+          hasBasePrice: typeof fullB.signals.total_price === "number",
+        },
+        comparison,
+      };
     }),
 });
