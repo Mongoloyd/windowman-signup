@@ -12,6 +12,9 @@
  *
  * Access: Phase 1 private only. Both analyses must belong to the same lead.
  * Both must be full_unlocked (phone OTP verified).
+ *
+ * Animations: ScrollReveal entrance on verdict, price cards, pillar grid,
+ * negotiation scripts, and export section with staggered delays.
  */
 
 import { useParams, useLocation } from "wouter";
@@ -22,6 +25,7 @@ import { PillarDiffGrid } from "@/components/compare/PillarDiffGrid";
 import { NegotiationScripts } from "@/components/compare/NegotiationScripts";
 import { ComparePrintView } from "@/components/compare/ComparePrintView";
 import { RetentionWarning } from "@/components/compare/RetentionWarning";
+import { ScrollReveal } from "@/components/ScrollReveal";
 import { fireDataLayerEvent } from "@/lib/pixels";
 import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 
@@ -131,87 +135,101 @@ export default function CompareReport() {
       <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col gap-8">
 
         {/* Back nav */}
-        <button
-          onClick={() => navigate(-1 as any)}
-          className="no-print flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 font-bold transition-colors w-fit"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Analysis
-        </button>
+        <ScrollReveal delay={0}>
+          <button
+            onClick={() => navigate(-1 as any)}
+            className="no-print flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 font-bold transition-colors w-fit"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Analysis
+          </button>
+        </ScrollReveal>
 
         {/* Page Title */}
-        <div className="flex flex-col gap-1 no-print">
-          <h1 className="text-2xl font-black text-slate-900">Quote Comparison</h1>
-          <p className="text-sm text-slate-700">
-            {quoteA.contractorLabel} vs {quoteB.contractorLabel}
-          </p>
-        </div>
+        <ScrollReveal delay={0.05}>
+          <div className="flex flex-col gap-1 no-print">
+            <h1 className="text-2xl font-black text-slate-900">Quote Comparison</h1>
+            <p className="text-sm text-slate-700">
+              {quoteA.contractorLabel} vs {quoteB.contractorLabel}
+            </p>
+          </div>
+        </ScrollReveal>
 
         {/* Retention Warning */}
-        <RetentionWarning
-          onDownloadClick={handleDownload}
-          onPrintClick={handlePrint}
-        />
+        <ScrollReveal delay={0.1}>
+          <RetentionWarning
+            onDownloadClick={handleDownload}
+            onPrintClick={handlePrint}
+          />
+        </ScrollReveal>
 
         {/* Price Bridge — stacked on mobile, side-by-side on desktop */}
-        <div>
-          <h2 className="text-base font-black text-slate-900 mb-4">True Real Cost™ Breakdown</h2>
-          <div className="flex flex-col md:flex-row gap-4">
-            <WaterfallPriceCard
-              label={quoteA.contractorLabel}
-              base={pricing.quoteA.base}
-              adjusted={pricing.quoteA.adjusted}
-              liabilities={pricing.quoteA.liabilities}
-              isWinner={aIsWinner}
-              isLoser={!aIsWinner && !isTie}
-              isTie={isTie}
-            />
-            <WaterfallPriceCard
-              label={quoteB.contractorLabel}
-              base={pricing.quoteB.base}
-              adjusted={pricing.quoteB.adjusted}
-              liabilities={pricing.quoteB.liabilities}
-              isWinner={bIsWinner}
-              isLoser={!bIsWinner && !isTie}
-              isTie={isTie}
-            />
+        <ScrollReveal delay={0.15}>
+          <div>
+            <h2 className="text-base font-black text-slate-900 mb-4">True Real Cost™ Breakdown</h2>
+            <div className="flex flex-col md:flex-row gap-4">
+              <WaterfallPriceCard
+                label={quoteA.contractorLabel}
+                base={pricing.quoteA.base}
+                adjusted={pricing.quoteA.adjusted}
+                liabilities={pricing.quoteA.liabilities}
+                isWinner={aIsWinner}
+                isLoser={!aIsWinner && !isTie}
+                isTie={isTie}
+              />
+              <WaterfallPriceCard
+                label={quoteB.contractorLabel}
+                base={pricing.quoteB.base}
+                adjusted={pricing.quoteB.adjusted}
+                liabilities={pricing.quoteB.liabilities}
+                isWinner={bIsWinner}
+                isLoser={!bIsWinner && !isTie}
+                isTie={isTie}
+              />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
         {/* Pillar Diff Grid */}
-        <div>
-          <h2 className="text-base font-black text-slate-900 mb-4">5-Pillar Audit Comparison</h2>
-          <PillarDiffGrid
-            comparison={comparison}
-            idA={idA}
-            idB={idB}
-            labelA={quoteA.contractorLabel}
-            labelB={quoteB.contractorLabel}
-            onAnalyticsEvent={handleAnalyticsEvent}
-          />
-        </div>
+        <ScrollReveal delay={0.2}>
+          <div>
+            <h2 className="text-base font-black text-slate-900 mb-4">5-Pillar Audit Comparison</h2>
+            <PillarDiffGrid
+              comparison={comparison}
+              idA={idA}
+              idB={idB}
+              labelA={quoteA.contractorLabel}
+              labelB={quoteB.contractorLabel}
+              onAnalyticsEvent={handleAnalyticsEvent}
+            />
+          </div>
+        </ScrollReveal>
 
         {/* Negotiation Scripts */}
         {comparison.negotiationScript.length > 0 && (
-          <NegotiationScripts
-            scripts={comparison.negotiationScript}
-            loserLabel={loserLabel}
-            idA={idA}
-            idB={idB}
-            onAnalyticsEvent={handleAnalyticsEvent}
-          />
+          <ScrollReveal delay={0.25}>
+            <NegotiationScripts
+              scripts={comparison.negotiationScript}
+              loserLabel={loserLabel}
+              idA={idA}
+              idB={idB}
+              onAnalyticsEvent={handleAnalyticsEvent}
+            />
+          </ScrollReveal>
         )}
 
         {/* Print / Save PDF */}
-        <div className="flex flex-col gap-3 no-print">
-          <h2 className="text-base font-black text-slate-900">Export This Report</h2>
-          <ComparePrintView
-            quoteA={quoteA}
-            quoteB={quoteB}
-            comparison={comparison}
-            onAnalyticsEvent={handleAnalyticsEvent}
-          />
-        </div>
+        <ScrollReveal delay={0.3}>
+          <div className="flex flex-col gap-3 no-print">
+            <h2 className="text-base font-black text-slate-900">Export This Report</h2>
+            <ComparePrintView
+              quoteA={quoteA}
+              quoteB={quoteB}
+              comparison={comparison}
+              onAnalyticsEvent={handleAnalyticsEvent}
+            />
+          </div>
+        </ScrollReveal>
 
       </div>
     </div>

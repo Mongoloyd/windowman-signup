@@ -317,8 +317,8 @@
 - [x] Add FloatingChip/pulse to UploadZone dropzone
 - [x] Convert AnalysisPreview.tsx to light mode
 - [x] Convert CompareReport.tsx to light mode
-- [ ] Convert QuoteAnalysisTheater.tsx to light mode (deferred — needs separate pass)
-- [ ] Convert AnalysisReport.tsx to light mode (deferred — needs separate pass)
+- [x] Convert QuoteAnalysisTheater.tsx to light mode
+- [x] Convert AnalysisReport.tsx to light mode
 - [x] Convert CompareQuotePickerModal.tsx to light mode
 - [x] Refine AppLayout.tsx background texture for premium depth (dot-grid opacity 60%, noise overlay 3%)
 - [x] Run tests + typecheck, confirm 0 regressions (237/239 pass, 2 pre-existing timeouts, 0 TS errors)
@@ -332,3 +332,10 @@
 - [x] Convert ConfidenceMeter.tsx: slate-200 bar track, slate-900 label text
 - [x] Convert CompareQuotePickerModal.tsx: full rewrite — white/glass dialog, cyan-50 selection, slate-900 text
 - [x] CompareVerdictBanner.tsx: already in light mode (no changes needed)
+
+## Final Light Mode Sweep + Compare Animations
+- [x] Convert QuoteAnalysisTheater.tsx to light mode (strict mechanical mapping, zero dark tokens)
+- [x] Convert AnalysisReport.tsx to light mode (strict mechanical mapping, zero dark tokens)
+- [x] Add ScrollReveal entrance animations to CompareReport.tsx (verdict banner, price cards, pillar grid)
+- [x] Grep verification: zero dark-mode artifacts in analysis/ and compare/ directories
+- [x] Run test suite + typecheck, confirm 0 regressions (239/239 pass, 0 TS errors)
