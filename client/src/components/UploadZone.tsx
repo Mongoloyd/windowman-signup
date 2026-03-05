@@ -20,6 +20,8 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useInView } from "@/hooks/useInView";
 import { firePhoneVerifiedConversion, hashPii } from "@/lib/pixels";
+import QuoteRevealGate from "@/components/analysis/QuoteRevealGate";
+import AnalysisReport from "@/pages/analysis-report";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -677,76 +679,25 @@ export function UploadZone() {
         )}
 
         {/* ── STATE: full_analysis ── */}
-        {state === "full_analysis" && (
-          <div className="rounded-2xl p-8" style={{ background: "rgba(16,185,129,0.03)", border: "1px solid rgba(16,185,129,0.2)" }}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(16,185,129,0.1)" }}>
+        {state === "full_analysis" && analysisData?.analysisId && (
+          analysisData?.fullAnalysis ? (
+            <QuoteRevealGate
+              scanId={analysisData.analysisId}
+              scored={(analysisData.fullAnalysis as any).scored ?? analysisData.fullAnalysis}
+            >
+              <AnalysisReport
+                signals={(analysisData.fullAnalysis as any).signals}
+                scored={(analysisData.fullAnalysis as any).scored}
+              />
+            </QuoteRevealGate>
+          ) : (
+            <div className="rounded-2xl p-8" style={{ background: "rgba(16,185,129,0.03)", border: "1px solid rgba(16,185,129,0.2)" }}>
+              <div className="flex items-center gap-3">
                 <Unlock className="w-5 h-5 text-emerald-400" />
-              </div>
-              <div>
                 <p className="text-emerald-400 font-semibold text-sm">Full Analysis Unlocked</p>
-                <p className="text-slate-400 text-xs">Phone verified — all findings are now visible.</p>
               </div>
             </div>
-            {analysisData?.fullAnalysis && (() => {
-              const fa = analysisData.fullAnalysis as Record<string, unknown>;
-              const pillars = fa.pillars as Array<{ key: string; label: string; score: number; status: string; detail: string }> | undefined;
-              const overcharge = fa.overchargeEstimate as { low: number; high: number } | undefined;
-              const recommendations = fa.recommendations as string[] | undefined;
-              return (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div>
-                      <p className="text-slate-400 text-xs mb-1">Overall Score</p>
-                      <span className="text-4xl font-bold text-white font-mono">{String(fa.score)}</span>
-                      <span className="text-slate-500 text-lg ml-1">/100</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-slate-400 text-xs mb-1">Grade</p>
-                      <span className="text-4xl font-bold text-[#00D9FF] font-mono">{String(fa.grade)}</span>
-                    </div>
-                  </div>
-                  {pillars && (
-                    <div className="space-y-2">
-                      {pillars.map((p) => (
-                        <div key={p.key} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-white text-sm font-medium">{p.label}</span>
-                            <div className="flex items-center gap-2">
-                              {p.status === "pass" ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-amber-400" />}
-                              <span className="text-white font-mono text-sm font-bold">{p.score}/100</span>
-                            </div>
-                          </div>
-                          <p className="text-slate-400 text-xs">{p.detail}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {overcharge && (
-                    <div className="rounded-xl p-4" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}>
-                      <p className="text-red-400 text-xs font-mono uppercase tracking-wider mb-2">Estimated Overcharge Range</p>
-                      <p className="text-white text-2xl font-bold font-mono">
-                        ${overcharge.low.toLocaleString()} – ${overcharge.high.toLocaleString()}
-                      </p>
-                    </div>
-                  )}
-                  {recommendations && recommendations.length > 0 && (
-                    <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                      <p className="text-slate-400 text-xs font-mono uppercase tracking-wider mb-3">Recommendations</p>
-                      <ul className="space-y-2">
-                        {recommendations.map((r, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                            <ChevronRight className="w-3 h-3 text-[#00D9FF] mt-0.5 shrink-0" />
-                            {r}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
+          )
         )}
 
         {/* ── STATE: purged ── */}

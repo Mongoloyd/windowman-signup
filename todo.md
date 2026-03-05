@@ -225,3 +225,15 @@
 - [x] Wire firePhoneVerifiedConversion into verifyPhoneOTP onSuccess in UploadZone and AnalysisPreview
 - [x] Write 25 Vitest tests for isFraud pixel guard (Meta, Google, GTM, edge cases, server contract)
 - [x] Fix promptInjection.ts Variant 2/3/4 regex gaps — 141/141 total tests now passing
+
+## Analysis Report Integration (GitHub Committed Files)
+- [x] Sync GitHub and import QuoteAnalysisTheater.tsx, QuoteRevealGate.tsx, theaterCopy.ts, analysis-report.tsx
+- [x] Fix ScoredResult import — created shared/scoredTypes.ts (client-safe mirror of server types)
+- [x] Wire AnalysisReport into AnalysisPreview post-OTP verification flow (inline render, not standalone route)
+- [x] Wire AnalysisReport into UploadZone post-OTP verification flow (same pattern)
+- [x] Apply depth tokens (SURFACE/SURFACE_INSET) to report cards — bg-slate-900/60 + border-white/8
+- [x] High-contrast status pills: Rose-500/20 bg + Rose-300 text (flags), Amber (warns), Emerald (OK)
+- [x] Theater shows once per scanId (localStorage flag via QuoteRevealGate)
+- [x] Fixed hardCaps → hardCap (singular object, not array) in analysis-report.tsx
+- [x] Added overchargeEstimate optional field to ScoredResult type
+- [x] 141/141 tests passing, 0 TS errors

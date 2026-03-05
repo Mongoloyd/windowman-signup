@@ -27,6 +27,9 @@ import {
 } from "lucide-react";
 import { useOtpCooldown } from "@/hooks/useOtpCooldown";
 import { firePhoneVerifiedConversion, hashPii } from "@/lib/pixels";
+import QuoteRevealGate from "@/components/analysis/QuoteRevealGate";
+import AnalysisReport from "@/pages/analysis-report";
+import type { ScoredResult } from "@shared/scoredTypes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +51,11 @@ interface FullAnalysis {
   analyzedAt?: string;
   overchargeEstimate?: { low: number; high: number; currency: string };
   recommendations?: string[];
+  /** Raw fields from fullJson — used by QuoteAnalysisTheater + AnalysisReport */
+  signals?: Record<string, unknown>;
+  scored?: ScoredResult;
+  forensic?: Record<string, unknown>;
+  identity?: Record<string, unknown>;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -716,108 +724,32 @@ export default function AnalysisPreview() {
         )}
 
         {/* ── STATE: full_analysis ── */}
-        {pageState === "full_analysis" && (fullAnalysis || previewData) && (
-          <div>
-            {/* Header */}
-            <div className="mb-8">
-              <div className="flex items-center gap-2 mb-2">
-                <Unlock className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-mono text-emerald-400 uppercase tracking-widest">Full Analysis Unlocked</span>
+        {pageState === "full_analysis" && analysisId && (
+          fullAnalysis?.scored ? (
+            <QuoteRevealGate scanId={analysisId} scored={fullAnalysis.scored}>
+              <AnalysisReport signals={fullAnalysis.signals} scored={fullAnalysis.scored} />
+            </QuoteRevealGate>
+          ) : (
+            /* Return visit: isFullUnlocked but no fullJson in memory — show preview with unlocked badge */
+            <div>
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-2">
+                  <Unlock className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-mono text-emerald-400 uppercase tracking-widest">Full Analysis Unlocked</span>
+                </div>
+                <h1 className="text-3xl font-black text-white mb-2">Complete Quote Report</h1>
+                <p className="text-slate-400">Your full analysis is ready. Verify your phone to view the detailed report.</p>
               </div>
-              <h1 className="text-3xl font-black text-white mb-2">Complete Quote Report</h1>
-              <p className="text-slate-400">Your full analysis is ready. Here's everything we found.</p>
-            </div>
-
-            {/* Grade */}
-            <div className="rounded-2xl p-8 border border-white/6 mb-6" style={{ background: "rgba(15,20,25,0.8)" }}>
-              <GradeBadge
-                grade={fullAnalysis?.grade ?? previewData?.preview?.finalGrade ?? "?"}
-                score={fullAnalysis?.score ?? previewData?.preview?.overallScore ?? 0}
-              />
-
-              {fullAnalysis?.overchargeEstimate && (
-                <div className="mt-6 flex items-center gap-3 p-4 rounded-xl" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)" }}>
-                  <TrendingDown className="w-5 h-5 text-red-400 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-red-300">Estimated Overcharge Range</p>
-                    <p className="text-lg font-black text-white">
-                      ${fullAnalysis.overchargeEstimate.low.toLocaleString()} – ${fullAnalysis.overchargeEstimate.high.toLocaleString()}
-                    </p>
-                  </div>
+              {previewData?.preview && (
+                <div className="rounded-2xl p-8 border border-white/6 mb-6" style={{ background: "rgba(15,20,25,0.8)" }}>
+                  <GradeBadge
+                    grade={previewData.preview.finalGrade ?? "?"}
+                    score={previewData.preview.overallScore ?? 0}
+                  />
                 </div>
               )}
             </div>
-
-            {/* Pillars */}
-            <div className="space-y-3 mb-6">
-              <p className="text-xs font-mono text-slate-500 uppercase tracking-widest">5-Pillar Breakdown</p>
-              {fullAnalysis?.pillars ? (
-                fullAnalysis.pillars.map((pillar) => {
-                  const config = PILLAR_CONFIG.find((p) => p.key === pillar.key);
-                  if (!config) return null;
-                  return (
-                    <PillarCard
-                      key={pillar.key}
-                      pillar={config}
-                      status={pillar.status}
-                      score={pillar.score}
-                      detail={pillar.detail}
-                    />
-                  );
-                })
-              ) : (
-                PILLAR_CONFIG.map((pillar) => {
-                  const finding = previewData?.preview?.findings?.find((f: any) => f.pillarKey === pillar.key || f.pillarLabel === pillar.label);
-                  const status = finding ? (finding.severity === "flag" ? "fail" : "warn") : undefined;
-                  return (
-                    <PillarCard
-                      key={pillar.key}
-                      pillar={pillar}
-                      status={status}
-                    />
-                  );
-                })
-              )}
-            </div>
-
-            {/* Recommendations */}
-            {fullAnalysis?.recommendations && fullAnalysis.recommendations.length > 0 && (
-              <div className="rounded-2xl p-6 border border-white/6 mb-6" style={{ background: "rgba(15,20,25,0.8)" }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Star className="w-4 h-4 text-[#00D9FF]" />
-                  <p className="text-sm font-semibold text-white">Recommendations</p>
-                </div>
-                <ul className="space-y-3">
-                  {fullAnalysis.recommendations.map((rec, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm text-slate-300">
-                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
-                        style={{ background: "rgba(0,217,255,0.15)", color: "#00D9FF" }}>
-                        {i + 1}
-                      </span>
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* CTA: Connect with fair-priced contractors */}
-            <div
-              className="rounded-2xl p-8 text-center border"
-              style={{ background: "linear-gradient(135deg, rgba(0,217,255,0.08), rgba(0,217,255,0.02))", borderColor: "rgba(0,217,255,0.2)" }}
-            >
-              <h3 className="text-xl font-bold text-white mb-2">Ready to Get a Fair Price?</h3>
-              <p className="text-slate-400 mb-6 text-sm">We'll connect you with pre-vetted contractors in your area who charge fair market rates.</p>
-              <button
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-[#0F1419] transition-all duration-300 hover:scale-105"
-                style={{ background: "#00D9FF", boxShadow: "0 0 30px rgba(0,217,255,0.3)" }}
-                onClick={() => toast.success("A WindowMan advisor will contact you within 24 hours.")}
-              >
-                <ExternalLink className="w-4 h-4" />
-                Connect Me with Fair Contractors
-              </button>
-            </div>
-          </div>
+          )
         )}
 
       </main>

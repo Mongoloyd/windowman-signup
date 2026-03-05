@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import type { ScoredResult } from "../../../server/scanner-brain"; 
+import type { ScoredResult } from "@shared/scoredTypes";
 import { riskCopy, type RiskLevel } from "./theaterCopy";
 
 type PillarKey = "Safety" | "Scope" | "Price" | "Fine Print" | "Warranty";
