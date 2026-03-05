@@ -121,10 +121,10 @@ function OTPInput({ onComplete, disabled }: { onComplete: (code: string) => void
           disabled={disabled}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
-          className="w-12 h-14 text-center text-xl font-bold rounded-lg bg-white/5 border-2 text-white focus:outline-none transition-all duration-200 disabled:opacity-50"
+          className="w-12 h-14 text-center text-xl font-bold rounded-lg bg-white/80 border-2 text-slate-900 focus:outline-none transition-all duration-200 disabled:opacity-50"
           style={{
-            borderColor: d ? "#00D9FF" : "rgba(255,255,255,0.12)",
-            boxShadow: d ? "0 0 12px rgba(0,217,255,0.3)" : "none",
+            borderColor: d ? "#0891B2" : "rgba(8,145,178,0.2)",
+            boxShadow: d ? "0 0 12px rgba(8,145,178,0.25)" : "none",
           }}
         />
       ))}
@@ -144,9 +144,9 @@ function PillarCard({ pillar, status, score, detail, locked }: {
   const Icon = pillar.icon;
 
   const statusConfig: Record<string, { icon: React.ReactNode; label: string; color: string; bg: string }> = {
-    pass: { icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />, label: "Pass", color: "#34d399", bg: "rgba(52,211,153,0.08)" },
-    warn: { icon: <AlertTriangle className="w-4 h-4 text-amber-400" />, label: "Warning", color: "#fbbf24", bg: "rgba(251,191,36,0.08)" },
-    fail: { icon: <AlertCircle className="w-4 h-4 text-red-400" />, label: "Flag", color: "#f87171", bg: "rgba(248,113,113,0.08)" },
+    pass: { icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, label: "Pass", color: "#059669", bg: "rgba(5,150,105,0.06)" },
+    warn: { icon: <AlertTriangle className="w-4 h-4 text-amber-600" />, label: "Warning", color: "#d97706", bg: "rgba(217,119,6,0.06)" },
+    fail: { icon: <AlertCircle className="w-4 h-4 text-red-600" />, label: "Flag", color: "#dc2626", bg: "rgba(220,38,38,0.06)" },
   };
 
   const cfg = status ? statusConfig[status] ?? null : null;
@@ -155,14 +155,14 @@ function PillarCard({ pillar, status, score, detail, locked }: {
     <div
       className="rounded-xl p-4 border transition-all duration-300"
       style={{
-        background: locked ? "rgba(15,20,25,0.6)" : (cfg?.bg ?? "rgba(15,20,25,0.6)"),
-        borderColor: locked ? "rgba(255,255,255,0.06)" : (cfg ? `${cfg.color}33` : "rgba(255,255,255,0.06)"),
+        background: locked ? "rgba(241,245,249,0.7)" : (cfg?.bg ?? "rgba(255,255,255,0.8)"),
+        borderColor: locked ? "rgba(8,145,178,0.1)" : (cfg ? `${cfg.color}33` : "rgba(8,145,178,0.15)"),
       }}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 shrink-0" style={{ color: locked ? "rgba(255,255,255,0.3)" : "#00D9FF" }} />
-          <span className="text-sm font-semibold" style={{ color: locked ? "rgba(255,255,255,0.3)" : "white" }}>
+          <Icon className="w-4 h-4 shrink-0" style={{ color: locked ? "rgba(100,116,139,0.4)" : "#0891B2" }} />
+          <span className="text-sm font-semibold" style={{ color: locked ? "rgba(100,116,139,0.4)" : "#0f172a" }}>
             {pillar.label}
           </span>
         </div>
@@ -181,10 +181,10 @@ function PillarCard({ pillar, status, score, detail, locked }: {
         </div>
       </div>
       {!locked && detail && (
-        <p className="text-xs text-slate-400 mt-1 leading-relaxed">{detail}</p>
+        <p className="text-xs text-slate-700 mt-1 leading-relaxed">{detail}</p>
       )}
       {locked && (
-        <div className="h-3 rounded bg-white/5 mt-1" />
+        <div className="h-3 rounded bg-slate-100 mt-1" />
       )}
     </div>
   );
@@ -210,10 +210,10 @@ function GradeBadge({ grade, score, size = "lg" }: { grade: string; score: numbe
         {grade}
       </div>
       <div>
-        <div className={`${isLg ? "text-4xl" : "text-2xl"} font-black text-white`}>
-          {score}<span className="text-slate-400 text-lg">/100</span>
+        <div className={`${isLg ? "text-4xl" : "text-2xl"} font-black text-slate-900`}>
+          {score}<span className="text-slate-500 text-lg">/100</span>
         </div>
-        <div className="text-sm text-slate-400 mt-1">Overall Score</div>
+        <div className="text-sm text-slate-700 mt-1">Overall Score</div>
       </div>
     </div>
   );
@@ -396,13 +396,13 @@ export default function AnalysisPreview() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#0F1419] text-white" style={{ fontFamily: "var(--font-sans)" }}>
+    <div className="min-h-screen bg-transparent text-slate-900" style={{ fontFamily: "var(--font-sans)" }}>
       {/* Header */}
-      <header className="border-b border-white/6 px-6 py-4">
+      <header className="border-b border-cyan-500/10 px-6 py-4 bg-white/60 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to WindowMan
@@ -420,7 +420,7 @@ export default function AnalysisPreview() {
         {pageState === "loading" && (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <Loader2 className="w-10 h-10 text-[#00D9FF] animate-spin" />
-            <p className="text-slate-400 font-mono text-sm">Loading your analysis...</p>
+            <p className="text-slate-700 font-mono text-sm">Loading your analysis...</p>
           </div>
         )}
 
@@ -428,12 +428,11 @@ export default function AnalysisPreview() {
         {pageState === "error" && (
           <div className="text-center py-24">
             <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Analysis Not Found</h2>
-            <p className="text-slate-400 mb-6">{errorMessage}</p>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Analysis Not Found</h2>
+            <p className="text-slate-700 mb-6">{errorMessage}</p>
             <button
               onClick={() => navigate("/")}
-              className="px-6 py-3 rounded-lg font-semibold text-[#0F1419]"
-              style={{ background: "#00D9FF" }}
+              className="px-6 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)] transition-all duration-300"
             >
               Upload a New Quote
             </button>
@@ -447,25 +446,25 @@ export default function AnalysisPreview() {
               style={{ background: "rgba(0,217,255,0.1)", border: "1px solid rgba(0,217,255,0.3)" }}>
               <CheckCircle2 className="w-8 h-8 text-[#00D9FF]" />
             </div>
-            <h1 className="text-3xl font-black text-white mb-3">Email Verified!</h1>
-            <p className="text-slate-400 mb-8 leading-relaxed">
+            <h1 className="text-3xl font-black text-slate-900 mb-3">Email Verified!</h1>
+            <p className="text-slate-700 mb-8 leading-relaxed">
               Your account is ready. When you get a window quote, upload it here and we'll analyze it instantly — no waiting.
             </p>
 
             {/* Upload CTA */}
             <div
-              className="rounded-2xl p-8 mb-6 border border-dashed cursor-pointer transition-all duration-300 hover:border-[#00D9FF] hover:bg-[rgba(0,217,255,0.04)]"
-              style={{ borderColor: "rgba(0,217,255,0.3)", background: "rgba(15,20,25,0.8)" }}
+              className="rounded-2xl p-8 mb-6 border-2 border-dashed cursor-pointer transition-all duration-300 hover:border-cyan-500 hover:bg-cyan-50/30"
+              style={{ borderColor: "rgba(8,145,178,0.3)", background: "rgba(255,255,255,0.8)" }}
               onClick={() => navigate("/#upload-zone")}
             >
               <FileText className="w-10 h-10 text-[#00D9FF] mx-auto mb-3 opacity-60" />
-              <p className="text-white font-semibold mb-1">Upload Your Quote When Ready</p>
+              <p className="text-slate-900 font-semibold mb-1">Upload Your Quote When Ready</p>
               <p className="text-sm text-slate-500">PDF, JPG, PNG — up to 10MB</p>
             </div>
 
             {/* Phone verification CTA */}
-            <div className="rounded-xl p-6 border border-white/6" style={{ background: "rgba(15,20,25,0.6)" }}>
-              <p className="text-sm text-slate-400 mb-4">
+            <div className="rounded-xl p-6 border border-cyan-500/15" style={{ background: "rgba(255,255,255,0.8)" }}>
+              <p className="text-sm text-slate-700 mb-4">
                 Want a WindowMan expert to call you now? Verify your mobile number and we'll reach out within 24 hours.
               </p>
               <div className="flex gap-3">
@@ -475,13 +474,12 @@ export default function AnalysisPreview() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handlePhoneSubmit()}
-                  className="flex-1 px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-[#00D9FF] transition-colors"
+                  className="flex-1 px-4 py-3 rounded-lg bg-white/80 border border-cyan-500/20 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors shadow-sm"
                 />
                 <button
                   onClick={handlePhoneSubmit}
                   disabled={!phone.trim() || isPhoneLoading}
-                  className="px-5 py-3 rounded-lg font-semibold text-[#0F1419] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-                  style={{ background: "#00D9FF" }}
+                  className="px-5 py-3 rounded-lg font-bold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-[0_4px_15px_-3px_rgba(0,188,212,0.35)]"
                 >
                   {isPhoneLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
                 </button>
@@ -499,15 +497,15 @@ export default function AnalysisPreview() {
                 <div className="w-2 h-2 rounded-full bg-amber-400" />
                 <span className="text-xs font-mono text-amber-400 uppercase tracking-widest">Partial Preview</span>
               </div>
-              <h1 className="text-3xl font-black text-white mb-2">Your Quote Analysis</h1>
-              <p className="text-slate-400">Verify your phone number to unlock the full report with detailed findings and savings estimates.</p>
+              <h1 className="text-3xl font-black text-slate-900 mb-2">Your Quote Analysis</h1>
+              <p className="text-slate-700">Verify your phone number to unlock the full report with detailed findings and savings estimates.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left: Score + Pillars */}
               <div className="lg:col-span-2 space-y-4">
                 {/* Grade card */}
-                <div className="rounded-2xl p-6 border border-white/6" style={{ background: "rgba(15,20,25,0.8)" }}>
+                <div className="rounded-2xl p-6 border border-cyan-500/15 bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)]">
                   <GradeBadge grade={previewData.preview?.finalGrade ?? "?"} score={previewData.preview?.overallScore ?? 0} />
 
                   {/* Findings */}
@@ -518,7 +516,7 @@ export default function AnalysisPreview() {
                       <div className="mt-6 space-y-2">
                         <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-3">Key Findings</p>
                         {findings.map((f: any, i: number) => (
-                          <div key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                          <div key={i} className="flex items-start gap-2 text-sm text-slate-800">
                             <ChevronRight className="w-4 h-4 text-[#00D9FF] shrink-0 mt-0.5" />
                             {f.label ?? f.tooltip ?? String(f)}
                           </div>
@@ -557,9 +555,9 @@ export default function AnalysisPreview() {
                     <>
                       <div className="flex items-center gap-2 mb-4">
                         <Lock className="w-5 h-5 text-[#00D9FF]" />
-                        <span className="font-bold text-white">Unlock Full Report</span>
+                        <span className="font-bold text-slate-900">Unlock Full Report</span>
                       </div>
-                      <p className="text-sm text-slate-400 mb-5 leading-relaxed">
+                      <p className="text-sm text-slate-700 mb-5 leading-relaxed">
                         Enter your mobile number to unlock the complete analysis — including exact dollar overcharges, contractor comparisons, and negotiation scripts.
                       </p>
 
@@ -580,13 +578,13 @@ export default function AnalysisPreview() {
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handlePhoneSubmit()}
-                          className="flex-1 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-[#00D9FF] transition-colors"
+                          className="flex-1 px-3 py-2.5 rounded-lg bg-white/80 border border-cyan-500/20 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors shadow-sm"
                         />
                         <button
                           onClick={handlePhoneSubmit}
                           disabled={!phone.trim() || isPhoneLoading || isSendCodeBlocked}
-                          className="px-4 py-2.5 rounded-lg font-semibold text-[#0F1419] disabled:opacity-50 text-sm whitespace-nowrap"
-                          style={{ background: isSendCodeBlocked ? "#64748b" : "#00D9FF" }}
+                          className="px-4 py-2.5 rounded-lg font-bold text-white disabled:opacity-50 text-sm whitespace-nowrap transition-all duration-300 shadow-[0_4px_15px_-3px_rgba(0,188,212,0.35)]"
+                          style={{ background: isSendCodeBlocked ? "#94a3b8" : "linear-gradient(to right, #06b6d4, #0891b2)" }}
                         >
                           {isPhoneLoading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -631,7 +629,7 @@ export default function AnalysisPreview() {
                               {sendCodeCooldown.formattedTime}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-700">
                             {sendCodeCooldown.captchaRequired
                               ? "Too many requests from this device. Please wait before trying again."
                               : "Please wait before requesting another code."}
@@ -646,10 +644,10 @@ export default function AnalysisPreview() {
                     <>
                       <div className="flex items-center gap-2 mb-4">
                         <Phone className="w-5 h-5 text-[#00D9FF]" />
-                        <span className="font-bold text-white">Enter Your Code</span>
+                        <span className="font-bold text-slate-900">Enter Your Code</span>
                       </div>
-                      <p className="text-sm text-slate-400 mb-5">
-                        We sent a 6-digit code to <span className="text-white font-mono">{e164Phone}</span>
+                      <p className="text-sm text-slate-700 mb-5">
+                        We sent a 6-digit code to <span className="text-slate-900 font-mono font-bold">{e164Phone}</span>
                       </p>
 
                       <OTPInput
@@ -660,7 +658,7 @@ export default function AnalysisPreview() {
                       {verifyOTPMutation.isPending && (
                         <div className="flex items-center justify-center gap-2 mt-4">
                           <Loader2 className="w-4 h-4 animate-spin text-[#00D9FF]" />
-                          <span className="text-sm text-slate-400">Verifying...</span>
+                          <span className="text-sm text-slate-700">Verifying...</span>
                         </div>
                       )}
 
@@ -694,7 +692,7 @@ export default function AnalysisPreview() {
                               {otpCooldown.formattedTime}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-700">
                             {otpCooldown.captchaRequired
                               ? "Your account is temporarily locked. Please wait, then complete a verification challenge."
                               : "Please wait before trying again."}
@@ -705,7 +703,7 @@ export default function AnalysisPreview() {
                       <div className="flex items-center justify-between mt-5 text-xs">
                         <button
                           onClick={() => { setPageState("preview"); setPhone(""); setE164Phone(""); }}
-                          className="flex items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors"
+                          className="flex items-center gap-1 text-slate-600 hover:text-slate-900 transition-colors"
                         >
                           <ArrowLeft className="w-3 h-3" />
                           Wrong number? Edit
@@ -713,7 +711,7 @@ export default function AnalysisPreview() {
                         <button
                           onClick={handleResendOTP}
                           disabled={resendCooldown > 0}
-                          className="flex items-center gap-1 text-slate-500 hover:text-[#00D9FF] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          className="flex items-center gap-1 text-slate-600 hover:text-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                           <RefreshCw className="w-3 h-3" />
                           {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
@@ -771,11 +769,11 @@ export default function AnalysisPreview() {
                   <Unlock className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs font-mono text-emerald-400 uppercase tracking-widest">Full Analysis Unlocked</span>
                 </div>
-                <h1 className="text-3xl font-black text-white mb-2">Complete Quote Report</h1>
-                <p className="text-slate-400">Your full analysis is ready. Verify your phone to view the detailed report.</p>
+                <h1 className="text-3xl font-black text-slate-900 mb-2">Complete Quote Report</h1>
+                <p className="text-slate-700">Your full analysis is ready. Verify your phone to view the detailed report.</p>
               </div>
               {previewData?.preview && (
-                <div className="rounded-2xl p-8 border border-white/6 mb-6" style={{ background: "rgba(15,20,25,0.8)" }}>
+                <div className="rounded-2xl p-8 border border-cyan-500/15 mb-6 bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)]">
                   <GradeBadge
                     grade={previewData.preview.finalGrade ?? "?"}
                     score={previewData.preview.overallScore ?? 0}

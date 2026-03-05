@@ -19,6 +19,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useInView } from "@/hooks/useInView";
+import { FloatingChip } from "@/components/FloatingChip";
 import { firePhoneVerifiedConversion, hashPii } from "@/lib/pixels";
 import QuoteRevealGate from "@/components/analysis/QuoteRevealGate";
 import AnalysisReport from "@/pages/analysis-report";
@@ -381,7 +382,9 @@ export function UploadZone() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleFileInput} />
-                <CloudUpload className="w-16 h-16 text-cyan-600 mx-auto mb-6 opacity-60" />
+                <FloatingChip distance={6} duration={3} delay={0}>
+                  <CloudUpload className="w-16 h-16 text-cyan-600 mx-auto mb-6 opacity-60" />
+                </FloatingChip>
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Have Your Quote Ready?</h3>
                 <p className="text-slate-700 mb-8">Let's analyze it. Drop your quote here or click to upload.</p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">

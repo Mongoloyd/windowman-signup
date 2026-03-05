@@ -33,7 +33,7 @@ export function WaterfallPriceCard({
     ? "ring-2 ring-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
     : isLoser
     ? "ring-2 ring-rose-500 shadow-[0_0_20px_rgba(239,68,68,0.15)]"
-    : "ring-1 ring-slate-700";
+    : "ring-1 ring-cyan-500/20";
 
   const statusPill = isWinner ? (
     <span className="rounded-full px-2.5 py-1 text-[11px] font-black tracking-wide uppercase inline-flex items-center gap-1 bg-emerald-600 text-white">
@@ -51,7 +51,7 @@ export function WaterfallPriceCard({
 
   return (
     <div
-      className={`flex-1 min-w-0 rounded-xl bg-[#141B24] border border-slate-700 ${ringClass} p-5 flex flex-col gap-4`}
+      className={`flex-1 min-w-0 rounded-xl bg-white/80 backdrop-blur-[24px] border border-cyan-500/15 shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] ${ringClass} p-5 flex flex-col gap-4`}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -59,15 +59,15 @@ export function WaterfallPriceCard({
           <p className="text-[10px] font-black tracking-widest uppercase text-slate-500 mb-0.5">
             Quote
           </p>
-          <h3 className="text-base font-black text-white leading-tight">{label}</h3>
+          <h3 className="text-base font-black text-slate-900 leading-tight">{label}</h3>
         </div>
         {statusPill}
       </div>
 
       {/* Sticker Price */}
-      <div className="flex items-center justify-between border-b border-slate-700/50 pb-3">
-        <span className="text-sm text-slate-400">Sticker Price</span>
-        <span className="font-mono tabular-nums text-base font-bold text-white">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+        <span className="text-sm text-slate-700">Sticker Price</span>
+        <span className="font-mono tabular-nums text-base font-bold text-slate-900">
           {base != null ? formatCurrency(base) : <span className="text-slate-500 text-sm">Not stated</span>}
         </span>
       </div>
@@ -80,14 +80,14 @@ export function WaterfallPriceCard({
           </p>
           {liabilities.map((l, i) => (
             <div key={i} className="flex items-start justify-between gap-2">
-              <span className="text-xs text-slate-400 leading-tight flex-1">{l.label}</span>
+              <span className="text-xs text-slate-700 leading-tight flex-1">{l.label}</span>
               <span className="font-mono tabular-nums text-xs text-rose-400 font-bold whitespace-nowrap">
                 +{formatCurrency(l.cost)}
               </span>
             </div>
           ))}
-          <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 mt-1">
-            <span className="text-xs text-slate-400">Total Liability Risk</span>
+          <div className="flex items-center justify-between border-t border-slate-200 pt-2 mt-1">
+            <span className="text-xs text-slate-700">Total Liability Risk</span>
             <span className="font-mono tabular-nums text-sm text-rose-400 font-black">
               +{formatCurrency(totalLiability)}
             </span>
@@ -103,21 +103,21 @@ export function WaterfallPriceCard({
       )}
 
       {/* TRUE REAL COST */}
-      <div className={`rounded-lg p-3 mt-auto ${isWinner ? "bg-emerald-900/30 border border-emerald-700/40" : isLoser ? "bg-rose-900/20 border border-rose-700/30" : "bg-slate-800/50 border border-slate-700/40"}`}>
+      <div className={`rounded-lg p-3 mt-auto ${isWinner ? "bg-emerald-50 border border-emerald-200" : isLoser ? "bg-rose-50 border border-rose-200" : "bg-slate-50 border border-slate-200"}`}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-[10px] font-black tracking-widest uppercase text-slate-400">
+            <p className="text-[10px] font-black tracking-widest uppercase text-slate-600">
               True Real Cost
             </p>
             <p className="text-[9px] text-slate-500">Window Man Certified™</p>
           </div>
           {adjusted != null ? (
-            <span className={`font-mono tabular-nums text-xl font-black ${isWinner ? "text-emerald-400" : isLoser ? "text-rose-400" : "text-white"}`}>
+            <span className={`font-mono tabular-nums text-xl font-black ${isWinner ? "text-emerald-700" : isLoser ? "text-rose-700" : "text-slate-900"}`}>
               {formatCurrency(adjusted)}
             </span>
           ) : (
             <div className="text-right">
-              <span className="font-mono tabular-nums text-base font-black text-slate-400">
+              <span className="font-mono tabular-nums text-base font-black text-slate-600">
                 {base != null ? formatCurrency(base + totalLiability) : "N/A"}
               </span>
               {base == null && (

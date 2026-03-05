@@ -1,7 +1,8 @@
 import { ASSETS } from "@/lib/assets";
 import { useInView } from "@/hooks/useInView";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, ScanLine, Shield, Zap } from "lucide-react";
 import { UrgencyTicker } from "@/components/UrgencyTicker";
+import { FloatingChip } from "@/components/FloatingChip";
 
 export function HeroSection() {
   const { ref, isInView } = useInView(0.1);
@@ -82,6 +83,32 @@ export function HeroSection() {
         >
           Free • No credit card • Results in 60 seconds
         </p>
+
+        {/* Floating trust badges — continuous float in conversion zone */}
+        <div
+          className={`flex flex-wrap justify-center gap-4 mt-10 transition-all duration-700 delay-[800ms] ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+        >
+          <FloatingChip delay={0} duration={3.5} distance={8} className="inline-block">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md border border-cyan-200/60 shadow-[0_4px_20px_-4px_rgba(0,188,212,0.15)] text-sm font-semibold text-slate-800">
+              <ScanLine className="w-4 h-4 text-cyan-600" aria-hidden="true" />
+              AI OCR
+            </span>
+          </FloatingChip>
+
+          <FloatingChip delay={0.8} duration={4} distance={10} className="inline-block">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md border border-emerald-200/60 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.15)] text-sm font-semibold text-slate-800">
+              <Shield className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+              256-bit Encrypted
+            </span>
+          </FloatingChip>
+
+          <FloatingChip delay={1.6} duration={4.5} distance={7} className="inline-block">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md border border-amber-200/60 shadow-[0_4px_20px_-4px_rgba(245,158,11,0.15)] text-sm font-semibold text-slate-800">
+              <Zap className="w-4 h-4 text-amber-600" aria-hidden="true" />
+              60s Scan
+            </span>
+          </FloatingChip>
+        </div>
       </div>
 
       {/* Scroll indicator */}

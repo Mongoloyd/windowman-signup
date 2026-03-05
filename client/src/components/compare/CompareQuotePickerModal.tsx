@@ -5,7 +5,7 @@
  * Calls listMyAnalyses (cookie-auth, no leadId param) and renders a list
  * of available scans. On selection, navigates to /compare/:idA/:idB
  *
- * Design tokens: SURFACE (#0F1419), SURFACE_INSET (#1A2030), cyan accent (#22D3EE).
+ * Design tokens: Light mode — white/glass card, cyan accent.
  * Mobile: stacked, full-width. No horizontal scrolling.
  *
  * SPEC CHANGES (ContractorLabelResolver):
@@ -39,20 +39,20 @@ interface CompareQuotePickerModalProps {
 
 /** Grade color map — matches the report UI */
 function gradeColor(grade: string | null): string {
-  if (!grade) return "text-slate-400";
+  if (!grade) return "text-slate-500";
   const g = grade.toUpperCase();
-  if (g.startsWith("A")) return "text-emerald-400";
-  if (g.startsWith("B")) return "text-cyan-400";
-  if (g.startsWith("C")) return "text-yellow-400";
-  return "text-rose-400";
+  if (g.startsWith("A")) return "text-emerald-700";
+  if (g.startsWith("B")) return "text-cyan-700";
+  if (g.startsWith("C")) return "text-amber-700";
+  return "text-rose-700";
 }
 
 /** Risk level badge class */
 function riskBadgeClass(riskLevel: string | null): string {
-  if (!riskLevel) return "bg-slate-700 text-slate-300";
-  if (riskLevel === "Critical") return "bg-rose-900/60 text-rose-300 border border-rose-700/40";
-  if (riskLevel === "Moderate") return "bg-amber-900/60 text-amber-300 border border-amber-700/40";
-  return "bg-emerald-900/60 text-emerald-300 border border-emerald-700/40";
+  if (!riskLevel) return "bg-slate-100 text-slate-600";
+  if (riskLevel === "Critical") return "bg-rose-50 text-rose-700 border border-rose-200";
+  if (riskLevel === "Moderate") return "bg-amber-50 text-amber-700 border border-amber-200";
+  return "bg-emerald-50 text-emerald-700 border border-emerald-200";
 }
 
 /** Format a date as "Mar 5" */
@@ -100,23 +100,21 @@ export function CompareQuotePickerModal({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="max-w-lg w-full p-0 overflow-hidden border border-white/8"
-        style={{ background: "#0F1419" }}
+        className="max-w-lg w-full p-0 overflow-hidden bg-white/95 backdrop-blur-[24px] border border-cyan-500/15 shadow-[0_25px_50px_-12px_rgba(44,62,80,0.15)]"
       >
         {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/6">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200">
           <div className="flex items-center gap-3">
             <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(34,211,238,0.12)" }}
+              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-cyan-50"
             >
-              <GitCompare className="w-4 h-4 text-cyan-400" />
+              <GitCompare className="w-4 h-4 text-cyan-600" />
             </div>
             <div>
-              <DialogTitle className="text-white text-base font-semibold">
+              <DialogTitle className="text-slate-900 text-base font-semibold">
                 Compare With Another Quote
               </DialogTitle>
-              <DialogDescription className="text-slate-400 text-xs mt-0.5">
+              <DialogDescription className="text-slate-600 text-xs mt-0.5">
                 Select a second scan to run a side-by-side forensic comparison.
               </DialogDescription>
             </div>
@@ -126,14 +124,14 @@ export function CompareQuotePickerModal({
         {/* Body */}
         <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
           {isLoading && (
-            <div className="flex items-center justify-center py-10 gap-3 text-slate-400">
-              <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+            <div className="flex items-center justify-center py-10 gap-3 text-slate-500">
+              <Loader2 className="w-5 h-5 animate-spin text-cyan-600" />
               <span className="text-sm">Loading your scans…</span>
             </div>
           )}
 
           {error && (
-            <div className="flex items-center gap-2 py-6 text-rose-400 text-sm">
+            <div className="flex items-center gap-2 py-6 text-rose-600 text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>Failed to load scans. Please try again.</span>
             </div>
@@ -141,8 +139,8 @@ export function CompareQuotePickerModal({
 
           {!isLoading && !error && analyses.length === 0 && (
             <div className="py-8 text-center">
-              <FileText className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm font-medium">No other scans found</p>
+              <FileText className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+              <p className="text-slate-600 text-sm font-medium">No other scans found</p>
               <p className="text-slate-500 text-xs mt-1 mb-4">
                 Upload a second quote to enable comparison.
               </p>
@@ -155,12 +153,7 @@ export function CompareQuotePickerModal({
                   navigate("/?compare=1");
                   onClose();
                 }}
-                className="gap-2 font-semibold"
-                style={{
-                  background: "rgba(34,211,238,0.15)",
-                  color: "#22D3EE",
-                  borderColor: "rgba(34,211,238,0.3)",
-                }}
+                className="gap-2 font-semibold bg-cyan-600 hover:bg-cyan-500 text-white"
               >
                 <FileText className="w-4 h-4" />
                 Upload a Second Quote
@@ -184,28 +177,24 @@ export function CompareQuotePickerModal({
                   <button
                     key={item.id}
                     onClick={() => handleSelect(item.id)}
-                    className="w-full text-left rounded-xl px-4 py-3 transition-all duration-150 border"
-                    style={{
-                      background: isSelected
-                        ? "rgba(34,211,238,0.08)"
-                        : "rgba(26,32,48,0.8)",
-                      borderColor: isSelected
-                        ? "rgba(34,211,238,0.4)"
-                        : "rgba(255,255,255,0.06)",
-                    }}
+                    className={`w-full text-left rounded-xl px-4 py-3 transition-all duration-150 border ${
+                      isSelected
+                        ? "bg-cyan-50 border-cyan-300 shadow-sm"
+                        : "bg-slate-50/80 border-slate-200 hover:bg-cyan-50/30 hover:border-cyan-200"
+                    }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       {/* Left: contractor label (primary) + filename (secondary) + date */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <Building2 className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                          <span className="text-white text-sm font-semibold truncate">
+                          <span className="text-slate-900 text-sm font-semibold truncate">
                             {label}
                           </span>
                         </div>
                         {subtitle && (
                           <div className="flex items-center gap-1.5 mb-1">
-                            <FileText className="w-3 h-3 text-slate-600 flex-shrink-0" />
+                            <FileText className="w-3 h-3 text-slate-400 flex-shrink-0" />
                             <span className="text-slate-500 text-xs truncate">{subtitle}</span>
                           </div>
                         )}
@@ -219,10 +208,10 @@ export function CompareQuotePickerModal({
                             </span>
                           )}
                           {item.status === "persisted_email_verified" && (
-                            <span className="text-xs text-amber-400/70">Email verified</span>
+                            <span className="text-xs text-amber-600">Email verified</span>
                           )}
                           {item.status === "full_unlocked" && (
-                            <span className="text-xs text-emerald-400/70">Full unlock</span>
+                            <span className="text-xs text-emerald-600">Full unlock</span>
                           )}
                         </div>
                       </div>
@@ -235,10 +224,10 @@ export function CompareQuotePickerModal({
                           </span>
                         )}
                         {item.overallScore != null && (
-                          <span className="text-slate-400 text-xs">{item.overallScore}/100</span>
+                          <span className="text-slate-500 text-xs">{item.overallScore}/100</span>
                         )}
                         <ChevronRight
-                          className={`w-4 h-4 transition-colors ${isSelected ? "text-cyan-400" : "text-slate-600"}`}
+                          className={`w-4 h-4 transition-colors ${isSelected ? "text-cyan-600" : "text-slate-400"}`}
                         />
                       </div>
                     </div>
@@ -250,12 +239,12 @@ export function CompareQuotePickerModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/6 flex items-center justify-between gap-3">
+        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="text-slate-400 hover:text-white"
+            className="text-slate-600 hover:text-slate-900"
           >
             Cancel
           </Button>
@@ -263,12 +252,7 @@ export function CompareQuotePickerModal({
             size="sm"
             disabled={!selectedId}
             onClick={handleCompare}
-            className="gap-2 font-semibold"
-            style={{
-              background: selectedId ? "rgba(34,211,238,0.15)" : undefined,
-              color: selectedId ? "#22D3EE" : undefined,
-              borderColor: selectedId ? "rgba(34,211,238,0.3)" : undefined,
-            }}
+            className="gap-2 font-semibold bg-cyan-600 hover:bg-cyan-500 text-white disabled:bg-slate-100 disabled:text-slate-400"
           >
             <GitCompare className="w-4 h-4" />
             Compare Quotes

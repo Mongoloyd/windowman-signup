@@ -67,10 +67,10 @@ export default function CompareReport() {
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0F1419] flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <p className="text-slate-400 text-sm">Running comparison engine…</p>
+          <p className="text-slate-700 text-sm">Running comparison engine…</p>
         </div>
       </div>
     );
@@ -83,16 +83,16 @@ export default function CompareReport() {
       "Comparison failed. Both quotes must be fully verified (phone OTP) and belong to the same account.";
 
     return (
-      <div className="min-h-screen bg-[#0F1419] flex items-center justify-center px-4">
-        <div className="max-w-md w-full rounded-xl bg-[#141B24] border border-rose-700/40 p-6 flex flex-col gap-4">
+      <div className="min-h-screen bg-transparent flex items-center justify-center px-4">
+        <div className="max-w-md w-full rounded-xl bg-white/80 backdrop-blur-[24px] border border-rose-200 shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] p-6 flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-6 h-6 text-rose-400 flex-shrink-0" />
-            <h2 className="text-base font-black text-white">Comparison Unavailable</h2>
+            <h2 className="text-base font-black text-slate-900">Comparison Unavailable</h2>
           </div>
-          <p className="text-sm text-slate-400 leading-relaxed">{message}</p>
+          <p className="text-sm text-slate-700 leading-relaxed">{message}</p>
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300 font-bold"
+            className="flex items-center gap-2 text-sm text-cyan-700 hover:text-cyan-600 font-bold"
           >
             <ArrowLeft className="w-4 h-4" />
             Return to Home
@@ -119,7 +119,7 @@ export default function CompareReport() {
       : quoteA.contractorLabel;
 
   return (
-    <div className="min-h-screen bg-[#0F1419] text-[#E2E8F0]">
+    <div className="min-h-screen bg-transparent text-slate-900">
       {/* Sticky Verdict Banner */}
       <CompareVerdictBanner
         comparison={comparison}
@@ -133,7 +133,7 @@ export default function CompareReport() {
         {/* Back nav */}
         <button
           onClick={() => navigate(-1 as any)}
-          className="no-print flex items-center gap-2 text-sm text-slate-400 hover:text-white font-bold transition-colors w-fit"
+          className="no-print flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 font-bold transition-colors w-fit"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Analysis
@@ -141,8 +141,8 @@ export default function CompareReport() {
 
         {/* Page Title */}
         <div className="flex flex-col gap-1 no-print">
-          <h1 className="text-2xl font-black text-white">Quote Comparison</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-black text-slate-900">Quote Comparison</h1>
+          <p className="text-sm text-slate-700">
             {quoteA.contractorLabel} vs {quoteB.contractorLabel}
           </p>
         </div>
@@ -155,7 +155,7 @@ export default function CompareReport() {
 
         {/* Price Bridge — stacked on mobile, side-by-side on desktop */}
         <div>
-          <h2 className="text-base font-black text-white mb-4">True Real Cost™ Breakdown</h2>
+          <h2 className="text-base font-black text-slate-900 mb-4">True Real Cost™ Breakdown</h2>
           <div className="flex flex-col md:flex-row gap-4">
             <WaterfallPriceCard
               label={quoteA.contractorLabel}
@@ -180,7 +180,7 @@ export default function CompareReport() {
 
         {/* Pillar Diff Grid */}
         <div>
-          <h2 className="text-base font-black text-white mb-4">5-Pillar Audit Comparison</h2>
+          <h2 className="text-base font-black text-slate-900 mb-4">5-Pillar Audit Comparison</h2>
           <PillarDiffGrid
             comparison={comparison}
             idA={idA}
@@ -204,7 +204,7 @@ export default function CompareReport() {
 
         {/* Print / Save PDF */}
         <div className="flex flex-col gap-3 no-print">
-          <h2 className="text-base font-black text-white">Export This Report</h2>
+          <h2 className="text-base font-black text-slate-900">Export This Report</h2>
           <ComparePrintView
             quoteA={quoteA}
             quoteB={quoteB}

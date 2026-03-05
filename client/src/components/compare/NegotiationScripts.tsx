@@ -68,20 +68,20 @@ export function NegotiationScripts({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <h3 className="text-base font-black text-white">Negotiation Scripts</h3>
-        <span className="text-[10px] rounded-full px-2 py-0.5 bg-cyan-900/50 text-cyan-400 font-black uppercase tracking-wide">
+        <h3 className="text-base font-black text-slate-900">Negotiation Scripts</h3>
+        <span className="text-[10px] rounded-full px-2 py-0.5 bg-cyan-50 text-cyan-700 border border-cyan-200 font-black uppercase tracking-wide">
           3 Action Items
         </span>
       </div>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-slate-700">
         Use these exact scripts when negotiating with{" "}
-        <span className="text-white font-bold">{loserLabel}</span>. Copy and send directly.
+        <span className="text-slate-900 font-bold">{loserLabel}</span>. Copy and send directly.
       </p>
 
       {displayScripts.map((script, i) => (
         <div
           key={i}
-          className="rounded-xl bg-[#141B24] border border-slate-700 p-4 flex flex-col gap-3"
+          className="rounded-xl bg-white/80 backdrop-blur-[24px] border border-cyan-500/15 shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] p-4 flex flex-col gap-3"
         >
           {/* Script number */}
           <div className="flex items-center gap-2">
@@ -94,7 +94,7 @@ export function NegotiationScripts({
           </div>
 
           {/* Script text */}
-          <p className="font-mono text-sm text-slate-200 leading-relaxed bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+          <p className="font-mono text-sm text-slate-800 leading-relaxed bg-slate-50 rounded-lg p-3 border border-slate-200">
             {script.text}
           </p>
 
@@ -112,7 +112,7 @@ export function NegotiationScripts({
             </button>
             <button
               onClick={() => handleJumpToEvidence(script, i)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-cyan-400 border border-slate-700 hover:border-cyan-700 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-cyan-700 border border-slate-200 hover:border-cyan-300 transition-all"
             >
               Jump to Evidence ↓
             </button>

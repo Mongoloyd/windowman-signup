@@ -310,3 +310,25 @@
 - [x] Phase 2-3: Rewrite QualificationCard.tsx with mechanical mapping + 6:1 contrast
 - [x] Phase 4: ScanLine light variant (confirmed variant="light" in AppLayout)
 - [x] Phase 5: grep proof CLEAN, tsc 0 errors, 237/239 tests pass (2 pre-existing timeouts)
+
+## Framer Motion + Light Mode Analysis Pages + Background Texture
+- [x] Wire ScrollReveal into Home.tsx sections (staggered delays)
+- [x] Add FloatingChip to HeroSection trust badges
+- [x] Add FloatingChip/pulse to UploadZone dropzone
+- [x] Convert AnalysisPreview.tsx to light mode
+- [x] Convert CompareReport.tsx to light mode
+- [ ] Convert QuoteAnalysisTheater.tsx to light mode (deferred — needs separate pass)
+- [ ] Convert AnalysisReport.tsx to light mode (deferred — needs separate pass)
+- [x] Convert CompareQuotePickerModal.tsx to light mode
+- [x] Refine AppLayout.tsx background texture for premium depth (dot-grid opacity 60%, noise overlay 3%)
+- [x] Run tests + typecheck, confirm 0 regressions (237/239 pass, 2 pre-existing timeouts, 0 TS errors)
+
+## Compare Sub-Components Light Mode Conversion
+- [x] Convert WaterfallPriceCard.tsx: glass card bg, slate-900 text, emerald/rose-50 True Real Cost boxes
+- [x] Convert PillarDiffGrid.tsx: glass card bg, slate-200 borders, rose/amber-50 severity badges
+- [x] Convert NegotiationScripts.tsx: glass card bg, slate-50 script blocks, slate-200 borders
+- [x] Convert RetentionWarning.tsx: amber-50 bg, amber-800 heading, amber-700 body text
+- [x] Convert ComparePrintView.tsx: cyan-600 print button (was slate-700)
+- [x] Convert ConfidenceMeter.tsx: slate-200 bar track, slate-900 label text
+- [x] Convert CompareQuotePickerModal.tsx: full rewrite — white/glass dialog, cyan-50 selection, slate-900 text
+- [x] CompareVerdictBanner.tsx: already in light mode (no changes needed)

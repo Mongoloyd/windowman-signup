@@ -82,7 +82,7 @@ export function CompareVerdictBanner({
 
   return (
     <div
-      className={`sticky top-0 z-40 w-full bg-[#0F1419]/95 backdrop-blur-sm border-b ${bannerBg} px-4 py-3`}
+      className={`sticky top-0 z-40 w-full bg-white/90 backdrop-blur-xl border-b ${bannerBg} px-4 py-3`}
     >
       <div className="max-w-5xl mx-auto flex items-center justify-between gap-4 flex-wrap">
         {/* Left: Verdict */}
@@ -103,12 +103,12 @@ export function CompareVerdictBanner({
                 ≈ Statistical Tie
               </span>
             )}
-            <h2 className="text-base font-black text-white leading-tight">
+            <h2 className="text-base font-black text-slate-900 leading-tight">
               {verdictTitle}
             </h2>
           </div>
           {subCopy && (
-            <p className="text-xs text-slate-400 mt-0.5">{subCopy}</p>
+            <p className="text-xs text-slate-700 mt-0.5">{subCopy}</p>
           )}
         </div>
 

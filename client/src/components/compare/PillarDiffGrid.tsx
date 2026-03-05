@@ -82,9 +82,9 @@ export function PillarDiffGrid({
   }
 
   return (
-    <div className="rounded-xl bg-[#141B24] border border-slate-700 overflow-hidden">
+    <div className="rounded-xl bg-white/80 backdrop-blur-[24px] border border-cyan-500/15 shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] overflow-hidden">
       {/* Header */}
-      <div className="hidden md:grid grid-cols-[1fr_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-slate-700 bg-slate-800/50">
+      <div className="hidden md:grid grid-cols-[1fr_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-slate-200 bg-slate-50/80">
         <span className="text-[10px] font-black tracking-widest uppercase text-slate-500">
           Pillar
         </span>
@@ -109,20 +109,20 @@ export function PillarDiffGrid({
         return (
           <div
             key={key}
-            className={`group flex flex-col md:grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 md:gap-4 px-5 py-4 border-b border-slate-700/50 last:border-b-0 hover:bg-slate-800/30 transition-colors`}
+            className={`group flex flex-col md:grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 md:gap-4 px-5 py-4 border-b border-slate-100 last:border-b-0 hover:bg-cyan-50/30 transition-colors`}
           >
             {/* Pillar Name */}
             <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-white">
+              <span className="text-sm font-black text-slate-900">
                 {PILLAR_LABELS[key]}
               </span>
               {diff.severity === "flag" && (
-                <span className="text-[9px] rounded px-1 py-0.5 bg-rose-900/50 text-rose-400 font-black uppercase tracking-wide">
+                <span className="text-[9px] rounded px-1 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 font-black uppercase tracking-wide">
                   Flag
                 </span>
               )}
               {diff.severity === "warn" && (
-                <span className="text-[9px] rounded px-1 py-0.5 bg-yellow-900/50 text-yellow-400 font-black uppercase tracking-wide">
+                <span className="text-[9px] rounded px-1 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 font-black uppercase tracking-wide">
                   Warn
                 </span>
               )}
@@ -148,7 +148,7 @@ export function PillarDiffGrid({
             <div className="flex items-center">
               <button
                 onClick={() => handleEvidenceClick(key)}
-                className="text-xs text-cyan-400 hover:text-cyan-300 font-bold underline underline-offset-2 whitespace-nowrap transition-colors"
+                className="text-xs text-cyan-700 hover:text-cyan-600 font-bold underline underline-offset-2 whitespace-nowrap transition-colors"
               >
                 Show Evidence
               </button>

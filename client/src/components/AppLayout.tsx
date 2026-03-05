@@ -8,7 +8,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-gradient-to-b from-[#FAFBFC] to-[#F5F7F9] text-slate-900 overflow-x-hidden relative font-sans flex flex-col">
       {/* Background: -z-10 */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.06)_1px,transparent_0)] bg-[length:28px_28px]" />
+        <div className="absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] bg-[length:28px_28px]" />
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }} />
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[980px] h-[520px] rounded-full blur-[90px] bg-cyan-400/10" />
         <div className="absolute top-24 -left-40 w-[520px] h-[520px] rounded-full blur-[90px] bg-blue-500/10" />
         <div className="absolute top-80 -right-56 w-[520px] h-[520px] rounded-full blur-[90px] bg-emerald-500/5" />
