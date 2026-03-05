@@ -1,7 +1,7 @@
 import { ASSETS } from "@/lib/assets";
 import { useInView } from "@/hooks/useInView";
 import { ArrowDown, ScanLine, Shield, Zap } from "lucide-react";
-import { UrgencyTicker } from "@/components/UrgencyTicker";
+import { StatsPill } from "@/components/StatsPill";
 import { FloatingChip } from "@/components/FloatingChip";
 
 export function HeroSection() {
@@ -32,10 +32,7 @@ export function HeroSection() {
 
       {/* Content */}
       <div className="relative z-10 container max-w-5xl text-center">
-        {/* Urgency Ticker */}
-        <UrgencyTicker
-          className={`mb-8 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-        />
+  
 
         {/* Main Headline — visible from 20 feet */}
         <h1
@@ -48,15 +45,13 @@ export function HeroSection() {
           </span>
         </h1>
 
-        {/* Subheadline — 7.4:1 contrast */}
+        {/* Subheadline — 7.4:1 contrast with integrated StatsPill */}
         <p
-          className={`text-lg sm:text-xl text-slate-700 font-medium max-w-2xl mx-auto mb-10 leading-relaxed transition-all duration-700 delay-400 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+          className={`text-lg sm:text-xl text-slate-700 font-medium max-w-3xl mx-auto mb-10 leading-relaxed transition-all duration-700 delay-400 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
         >
           See exactly where you're being overcharged and get the leverage to
           negotiate fair pricing — powered by AI that's analyzed{" "}
-          <span className="text-slate-900 font-bold">
-            10,000+ Florida window contracts
-          </span>
+          <StatsPill inline showToday className="text-base" />
           .
         </p>
 

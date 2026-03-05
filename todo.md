@@ -347,3 +347,11 @@
 - [x] Wire button onClick to open CompareQuotePickerModal in AnalysisPreview
 - [x] CompareQuotePickerModal handles empty state (shows message if no other scans)
 - [x] Test modal open/close and scan selection flow (0 TS errors)
+
+
+## Hero Section Social Proof Consolidation
+- [x] Locate Stats Pill component in HeroSection (UrgencyTicker)
+- [x] Remove Stats Pill from top standalone position
+- [x] Integrate Stats Pill into subheadline sentence (replace '10,000+ Florida window contracts')
+- [x] Verify styling and spacing around nested pill (inline variant created)
+- [x] Test responsive layout on mobile/tablet (0 TS errors)
