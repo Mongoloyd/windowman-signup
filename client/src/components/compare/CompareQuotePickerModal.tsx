@@ -143,9 +143,28 @@ export function CompareQuotePickerModal({
             <div className="py-8 text-center">
               <FileText className="w-8 h-8 text-slate-600 mx-auto mb-3" />
               <p className="text-slate-400 text-sm font-medium">No other scans found</p>
-              <p className="text-slate-500 text-xs mt-1">
+              <p className="text-slate-500 text-xs mt-1 mb-4">
                 Upload a second quote to enable comparison.
               </p>
+              <Button
+                onClick={() => {
+                  fireDataLayerEvent({
+                    event: "wm_compare_empty_state_cta_clicked",
+                    currentAnalysisId,
+                  });
+                  navigate("/?compare=1");
+                  onClose();
+                }}
+                className="gap-2 font-semibold"
+                style={{
+                  background: "rgba(34,211,238,0.15)",
+                  color: "#22D3EE",
+                  borderColor: "rgba(34,211,238,0.3)",
+                }}
+              >
+                <FileText className="w-4 h-4" />
+                Upload a Second Quote
+              </Button>
             </div>
           )}
 

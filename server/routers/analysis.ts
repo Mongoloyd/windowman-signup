@@ -44,7 +44,7 @@ import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
 import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/analysisEngine";
 import { compareFromSignals } from "../services/comparisonEngine";
-import { resolveCompareLabels } from "../services/labeling";
+import { resolveCompareLabelPair } from "../lib/contractorLabel";
 import { resolveActiveLeadIdFromCookies } from "../lib/sessionHelpers";
 import { resolveContractorLabel } from "../lib/contractorLabel";
 import { listAnalysesForLeadPicker } from "../db";
@@ -911,10 +911,10 @@ export const analysisRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Quote B analysis data is incomplete." });
       }
 
-      // Resolve contractor labels (server-side, deterministic)
-      const { labelA, labelB } = resolveCompareLabels(
-        { signals: fullA.signals, analysisFileName: analysisA.fileName, fallbackName: "Quote A" },
-        { signals: fullB.signals, analysisFileName: analysisB.fileName, fallbackName: "The Challenger" }
+      // Resolve contractor labels (server-side, deterministic) using canonical resolver
+      const { labelA, labelB } = resolveCompareLabelPair(
+        fullA.signals as Parameters<typeof resolveCompareLabelPair>[0],
+        fullB.signals as Parameters<typeof resolveCompareLabelPair>[1]
       );
 
       // Run deterministic comparison engine
