@@ -765,7 +765,11 @@ export default function AnalysisPreview() {
               />
 
               <QuoteRevealGate scanId={analysisId} scored={fullAnalysis.scored}>
-                <AnalysisReport signals={fullAnalysis.signals} scored={fullAnalysis.scored} />
+                <AnalysisReport
+                  signals={fullAnalysis.signals}
+                  scored={fullAnalysis.scored}
+                  onBeatYourQuoteClick={() => setCompareModalOpen(true)}
+                />
               </QuoteRevealGate>
             </>
           ) : (

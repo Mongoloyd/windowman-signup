@@ -83,9 +83,10 @@ function barColorForStatus(status: "ok" | "warn" | "flag") {
 interface AnalysisReportProps {
   signals?: Record<string, unknown>;
   scored?: ScoredResult;
+  onBeatYourQuoteClick?: () => void;
 }
 
-const AnalysisReport: React.FC<AnalysisReportProps> = ({ signals, scored }) => {
+const AnalysisReport: React.FC<AnalysisReportProps> = ({ signals, scored, onBeatYourQuoteClick }) => {
   const grade = scored?.finalGrade ?? "?";
   const overall = clamp(scored?.overallScore ?? 0);
 
@@ -276,7 +277,11 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ signals, scored }) => {
               " p-6 flex flex-col justify-center text-center bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.04),transparent_70%)]"
             }
           >
-            <button className="bg-gradient-to-r from-cyan-600 to-cyan-500 text-white font-black py-4 rounded-xl shadow-[0_10px_30px_rgba(6,182,212,0.25)] hover:shadow-[0_14px_40px_rgba(6,182,212,0.35)] hover:scale-[1.02] transition-all">
+            <button
+              onClick={onBeatYourQuoteClick}
+              disabled={!onBeatYourQuoteClick}
+              className="bg-gradient-to-r from-cyan-600 to-cyan-500 text-white font-black py-4 rounded-xl shadow-[0_10px_30px_rgba(6,182,212,0.25)] hover:shadow-[0_14px_40px_rgba(6,182,212,0.35)] hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Beat-Your-Quote Check (Free)
             </button>
             <p className="mt-3 text-[11px] font-bold text-amber-700 leading-tight">

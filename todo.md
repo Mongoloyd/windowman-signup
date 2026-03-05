@@ -339,3 +339,11 @@
 - [x] Add ScrollReveal entrance animations to CompareReport.tsx (verdict banner, price cards, pillar grid)
 - [x] Grep verification: zero dark-mode artifacts in analysis/ and compare/ directories
 - [x] Run test suite + typecheck, confirm 0 regressions (239/239 pass, 0 TS errors)
+
+
+## Beat-Your-Quote CTA Button Implementation
+- [x] Wire 'Beat-Your-Quote Check' CTA button in analysis report to compare picker modal
+- [x] Add onBeatYourQuoteClick callback prop to AnalysisReport interface
+- [x] Wire button onClick to open CompareQuotePickerModal in AnalysisPreview
+- [x] CompareQuotePickerModal handles empty state (shows message if no other scans)
+- [x] Test modal open/close and scan selection flow (0 TS errors)
