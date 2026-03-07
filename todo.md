@@ -355,3 +355,12 @@
 - [x] Integrate Stats Pill into subheadline sentence (replace '10,000+ Florida window contracts')
 - [x] Verify styling and spacing around nested pill (inline variant created)
 - [x] Test responsive layout on mobile/tablet (0 TS errors)
+
+
+## Master Control Room Debug Page (/debug/scoring)
+- [x] Create tRPC procedure for server-side scoring debug (adminProcedure)
+- [x] Adapt ScoringPlayground.tsx to use canonical ExtractionSignals schema (not Lovable schema)
+- [x] Wire imports to use tRPC instead of direct scanner-brain imports (server-side only)
+- [x] Apply native Tailwind/shadcn light-mode styling
+- [x] Add route to App.tsx at /debug/scoring (lazy-loaded)
+- [x] Test TypeScript compilation and runtime (0 TS errors, 239/239 tests pass)
