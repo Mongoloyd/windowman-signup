@@ -15,6 +15,12 @@ export type HardCapResult = {
   ceiling: number | null;
 };
 
+export type ScoredItem = {
+  text: string;
+  pillar: PillarKey | "general";
+  severity?: "critical" | "warning" | "info";
+};
+
 export type ScoredResult = {
   overallScore: number;
   finalGrade: string;
@@ -24,8 +30,8 @@ export type ScoredResult = {
   finePrintScore: number;
   warrantyScore: number;
   pillarStatuses: PillarStatuses;
-  warnings: string[];
-  missingItems: string[];
+  warnings: ScoredItem[];
+  missingItems: ScoredItem[];
   hardCap: HardCapResult;
   overchargeEstimate?: { low: number; high: number; currency: string };
 };

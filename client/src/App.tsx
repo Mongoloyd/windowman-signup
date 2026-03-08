@@ -11,7 +11,8 @@ import VerifyEmail from "./pages/VerifyEmail";
 import CompareReport from "./pages/CompareReport";
 import Privacy from "./pages/Privacy";
 import { lazy, Suspense } from "react";
-const ScoringPlayground = lazy(() => import("./pages/debug/ScoringPlayground"));
+// TODO: ScoringPlayground needs refactor to use new ScoredItem[] types — see todo.md
+// const ScoringPlayground = lazy(() => import("./pages/debug/ScoringPlayground"));
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -22,12 +23,12 @@ function Router() {
       <Route path={"/analysis/preview"} component={AnalysisPreview} />
       <Route path={"/compare/:idA/:idB"} component={CompareReport} />
       <Route path={"/privacy"} component={Privacy} />
-      <Route path={"/debug/scoring"}>
+      {/* TODO: ScoringPlayground needs refactor to use new ScoredItem[] types — see todo.md */}
+      {/* <Route path={"/debug/scoring"}>
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" /></div>}>
           <ScoringPlayground />
         </Suspense>
-      </Route>
-      <Route path={"/404"} component={NotFound} />
+      </Route> */}      <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>

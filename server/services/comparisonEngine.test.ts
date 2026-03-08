@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { compareFromSignals, LIABILITY_RULES } from "./comparisonEngine";
 import type { CompareInput } from "./comparisonEngine";
 import type { ExtractionSignals } from "../scanner-brain/schema";
-import type { ScoredResult } from "../scanner-brain/scoring";
+import type { ScoredResult, ScoredItem } from "../scanner-brain/scoring";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,11 @@ function makeScored(overrides: Partial<ScoredResult> = {}): ScoredResult {
   return {
     overallScore: 75,
     finalGrade: "B",
-    riskLevel: "medium",
+    safetyScore: 75,
+    scopeScore: 75,
+    priceScore: 75,
+    finePrintScore: 75,
+    warrantyScore: 75,
     pillarStatuses: {
       safety: "ok",
       scope: "ok",
@@ -48,7 +52,14 @@ function makeScored(overrides: Partial<ScoredResult> = {}): ScoredResult {
       fine_print: "ok",
       warranty: "ok",
     },
-    warningBucket: [],
+    warnings: [] as ScoredItem[],
+    missingItems: [] as ScoredItem[],
+    hardCap: {
+      applied: false,
+      reason: null,
+      statute: null,
+      ceiling: null,
+    },
     ...overrides,
   } as unknown as ScoredResult;
 }

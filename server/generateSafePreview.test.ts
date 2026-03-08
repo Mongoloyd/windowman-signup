@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   generateSafePreview,
   type ScoredResult,
+  type ScoredItem,
   type PillarStatuses,
   type HardCapResult,
 } from "./scanner-brain/scoring";
@@ -31,8 +32,8 @@ function makeScoredResult(overrides: Partial<ScoredResult> = {}): ScoredResult {
       fine_print: "warn",
       warranty: "warn",
     },
-    warnings: [],
-    missingItems: [],
+    warnings: [] as ScoredItem[],
+    missingItems: [] as ScoredItem[],
     hardCap: NO_HARD_CAP,
   };
   return { ...defaults, ...overrides };
