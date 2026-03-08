@@ -79,6 +79,50 @@ function barColorForStatus(status: "ok" | "warn" | "flag") {
   return "bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]";
 }
 
+/* Forensic masking: derive pillar severity from ScoredItem[] */
+function getPillarSeverity(
+  warnings: any[],
+  missingItems: any[],
+  pillarKey: PillarKey
+): "critical" | "warning" | "ok" {
+  const pillarWarnings = warnings.filter((w) => w.pillar === pillarKey);
+  const pillarMissing = missingItems.filter((m) => m.pillar === pillarKey);
+  const allItems = [...pillarWarnings, ...pillarMissing];
+
+  if (allItems.some((item) => item.severity === "critical")) {
+    return "critical";
+  }
+  if (allItems.some((item) => item.severity === "warning")) {
+    return "warning";
+  }
+  return "ok";
+}
+
+/* Forensic label: replace score with qualitative label */
+function getForensicLabel(
+  severity: "critical" | "warning" | "ok",
+  warnings: any[],
+  missingItems: any[],
+  pillarKey: PillarKey
+): string {
+  const pillarWarnings = warnings.filter((w) => w.pillar === pillarKey);
+  const pillarMissing = missingItems.filter((m) => m.pillar === pillarKey);
+  const criticalCount = [...pillarWarnings, ...pillarMissing].filter(
+    (item) => item.severity === "critical"
+  ).length;
+  const warningCount = [...pillarWarnings, ...pillarMissing].filter(
+    (item) => item.severity === "warning"
+  ).length;
+
+  if (severity === "critical") {
+    return `${criticalCount} Critical${criticalCount !== 1 ? "s" : ""}`;
+  }
+  if (severity === "warning") {
+    return `${warningCount} Warning${warningCount !== 1 ? "s" : ""}`;
+  }
+  return "Verified Safe";
+}
+
 /* ── Main component ── */
 interface AnalysisReportProps {
   signals?: Record<string, unknown>;
@@ -209,6 +253,9 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ signals, scored, onBeat
               const meta = PILLAR_META[key];
               const status = (pillarStatuses[key] ?? "warn") as "ok" | "warn" | "flag";
               const score = pillarScores[key];
+              const forensicSeverity = getPillarSeverity(scored?.warnings ?? [], scored?.missingItems ?? [], key);
+              const forensicLabel = getForensicLabel(forensicSeverity, scored?.warnings ?? [], scored?.missingItems ?? [], key);
+              const shouldMaskScore = forensicSeverity !== "ok";
               return (
                 <div key={key} className={SURFACE_INSET + " p-4"}>
                   <div className="flex items-center justify-between mb-3">
@@ -222,9 +269,15 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ signals, scored, onBeat
                     <div className="flex-1">
                       <TrackBar pct={score} color={barColorForStatus(status)} />
                     </div>
-                    <span className="text-sm font-bold text-slate-600 w-8 text-right">
-                      {score}
-                    </span>
+                    {shouldMaskScore ? (
+                      <span className="text-xs font-bold text-slate-700 w-20 text-right leading-tight">
+                        {forensicLabel}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-bold text-slate-600 w-8 text-right">
+                        {score}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
