@@ -564,12 +564,12 @@ export default function ScoringPlayground() {
 
   // Auto-run scoring when signals change (debounced)
   useEffect(() => {
-    if (!autoRun) return;
+    if (!autoRun || !user || user.role !== "admin") return;
     const timer = setTimeout(() => {
       runScoring.mutate({ signals });
     }, 300);
     return () => clearTimeout(timer);
-  }, [signals, autoRun]);
+  }, [signals, autoRun, user]);
 
   const runManually = useCallback(() => {
     runScoring.mutate({ signals });
@@ -582,10 +582,11 @@ export default function ScoringPlayground() {
     toast.success("Full state copied to clipboard");
   }, [signals, result]);
 
-  // Run on mount
+  // Run on mount (only if authenticated and admin)
   useEffect(() => {
+    if (!user || user.role !== "admin") return;
     runScoring.mutate({ signals: DEFAULT_SIGNALS });
-  }, []);
+  }, [user]);
 
   // Auth gate
   if (authLoading) {

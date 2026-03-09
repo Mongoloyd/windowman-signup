@@ -400,3 +400,7 @@
 - UI can now display findings with explicit pillar attribution (no heuristic guessing)
 - All backend consumers (forensic.ts, analysisEngine.ts, comparisonEngine.ts) remain compatible
 - Frontend components can now access pillar-specific findings for better UX
+
+## Twilio/OTP Extraction to server/comms-brain/twilio.ts (Zero-Regression Refactor)
+- [ ] Phase 1: READ-ONLY inventory of all Twilio usage, route contracts, phone normalization, side effects, protections
+- [x] Phase 2: Create server/comms-brain/twilio.ts portable Twilio provider layer (COMPLETE)

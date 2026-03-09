@@ -1,5 +1,6 @@
 import React from "react";
 import type { ScoredResult } from "@shared/scoredTypes";
+import { EvidenceReveal } from "@/components/analysis/EvidenceReveal";
 
 /* ── Depth tokens (light mode) ── */
 const SURFACE =
@@ -270,9 +271,13 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ signals, scored, onBeat
                       <TrackBar pct={score} color={barColorForStatus(status)} />
                     </div>
                     {shouldMaskScore ? (
-                      <span className="text-xs font-bold text-slate-700 w-20 text-right leading-tight">
-                        {forensicLabel}
-                      </span>
+                      <EvidenceReveal
+                        pillarKey={key}
+                        pillarLabel={meta.label}
+                        forensicLabel={forensicLabel}
+                        warnings={scored?.warnings ?? []}
+                        missingItems={scored?.missingItems ?? []}
+                      />
                     ) : (
                       <span className="text-sm font-bold text-slate-600 w-8 text-right">
                         {score}
