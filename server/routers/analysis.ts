@@ -39,7 +39,7 @@ import {
   getLeadById,
 } from "../db";
 import { sendMagicLinkEmail } from "../email";
-import { twilioClient } from "../twilio";
+import { twilioService } from "../comms-brain";
 import { randomUUID, createHash } from "crypto";
 import { randomBytes } from "crypto";
 import { runPipeline, BRAIN_VERSION, AnalysisEngineError } from "../services/analysisEngine";
@@ -51,7 +51,7 @@ import { listAnalysesForLeadPicker } from "../db";
 import type { SafePreview } from "../scanner-brain";
 import { otpRateLimiter, lookupRateLimiter, ipRateLimiter, getClientIp, otpBackoff } from "../rateLimiter";
 
-const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID ?? "";
+// VERIFY_SERVICE_SID now lives inside comms-brain/twilio.ts
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "https://itswindowman.com";
 
 // Allowed MIME types for quote uploads
@@ -519,7 +519,7 @@ export const analysisRouter = router({
   lookupPhone: publicProcedure
     .input(z.object({ phone: z.string().min(7) }))
     .mutation(async ({ input, ctx }) => {
-      if (!twilioClient) {
+      if (!twilioService.isConfigured) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Phone verification not configured." });
       }
 
@@ -547,15 +547,7 @@ export const analysisRouter = router({
         });
       }
 
-      let lineType: string | null = null;
-      try {
-        const lookup = await twilioClient.lookups.v2
-          .phoneNumbers(e164)
-          .fetch({ fields: "line_type_intelligence" });
-        lineType = (lookup as any).lineTypeIntelligence?.type ?? null;
-      } catch (err) {
-        console.warn("[Lookup v2] Failed:", err);
-      }
+      const { lineType } = await twilioService.lookupLineType(e164);
 
       if (lineType === "voip") {
         throw new TRPCError({
@@ -585,7 +577,7 @@ export const analysisRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!twilioClient || !VERIFY_SERVICE_SID) {
+      if (!twilioService.isVerifyConfigured) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Verify service not configured." });
       }
 
@@ -614,9 +606,7 @@ export const analysisRouter = router({
       }
 
       try {
-        await twilioClient.verify.v2
-          .services(VERIFY_SERVICE_SID)
-          .verifications.create({ to: e164, channel: "sms" });
+        await twilioService.sendOTP(e164);
         return { success: true, e164 };
       } catch (err: any) {
         console.error("[Twilio Verify] sendPhoneOTP error:", err);
@@ -645,7 +635,7 @@ export const analysisRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { leadId, analysisId, phone, code } = input;
 
-      if (!twilioClient || !VERIFY_SERVICE_SID) {
+      if (!twilioService.isVerifyConfigured) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Verify service not configured." });
       }
 
@@ -670,10 +660,8 @@ export const analysisRouter = router({
       // Verify OTP with Twilio
       let verificationStatus: string;
       try {
-        const check = await twilioClient.verify.v2
-          .services(VERIFY_SERVICE_SID)
-          .verificationChecks.create({ to: e164, code });
-        verificationStatus = check.status;
+        const result = await twilioService.verifyOTP(e164, code);
+        verificationStatus = result.status;
       } catch (err: any) {
         console.error("[Twilio Verify] verifyPhoneOTP error:", err);
         throw new TRPCError({
@@ -754,11 +742,10 @@ export const analysisRouter = router({
       // Send team notification SMS — extract from previewJson
       const preview = getPreviewFromAnalysis(analysis);
       try {
-        const { sendSMS } = await import("../twilio");
         const teamPhone = process.env.TWILIO_TEAM_PHONE ?? process.env.TWILIO_PHONE_NUMBER ?? "";
         if (teamPhone) {
           const scoreText = preview ? `${preview.overallScore}/100 (${preview.finalGrade})` : "N/A";
-          await sendSMS(teamPhone, `✅ VERIFIED LEAD (Quote Upload)\nPhone: ${e164}\nAnalysis: ${analysisId}\nScore: ${scoreText}`);
+          await twilioService.sendSMS(teamPhone, `✅ VERIFIED LEAD (Quote Upload)\nPhone: ${e164}\nAnalysis: ${analysisId}\nScore: ${scoreText}`);
         }
       } catch (err) {
         console.error("[Twilio] Team SMS failed:", err);

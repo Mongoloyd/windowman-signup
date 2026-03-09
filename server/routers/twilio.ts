@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc";
 import { notifyOwner } from "../_core/notification";
-import { sendSMS, validateCredentials, twilioClient } from "../twilio";
+import { twilioService } from "../comms-brain";
 import {
   createLead,
   setLeadPhoneVerified,
@@ -14,14 +14,14 @@ import { randomUUID } from "crypto";
 // E.164 phone number regex
 const phoneSchema = z.string().regex(/^\+?[1-9]\d{7,14}$/, "Invalid phone number");
 
-const VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID ?? "";
+// VERIFY_SERVICE_SID now lives inside comms-brain/twilio.ts
 
 export const twilioRouter = router({
   /**
    * Validate Twilio credentials are working.
    */
   validateCredentials: publicProcedure.query(async () => {
-    const isValid = await validateCredentials();
+    const isValid = await twilioService.validateCredentials();
     return { valid: isValid };
   }),
 
@@ -50,7 +50,7 @@ export const twilioRouter = router({
       const { name, phone, source, answers, honeypot } = input;
       const isBotSubmission = typeof honeypot === "string" && honeypot.trim().length > 0;
 
-      if (!twilioClient) {
+      if (!twilioService.isConfigured) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Twilio not configured." });
       }
 
@@ -61,15 +61,7 @@ export const twilioRouter = router({
         : `+1${normalizedPhone}`;
 
       // Twilio Lookup v2 — check line type
-      let lineType: string | null = null;
-      try {
-        const lookup = await twilioClient.lookups.v2
-          .phoneNumbers(e164Phone)
-          .fetch({ fields: "line_type_intelligence" });
-        lineType = (lookup as any).lineTypeIntelligence?.type ?? null;
-      } catch (err) {
-        console.warn("[Twilio Lookup] Failed to lookup phone:", err);
-      }
+      const { lineType } = await twilioService.lookupLineType(e164Phone);
 
       // Block VOIP and landlines
       if (lineType === "voip" || lineType === "landline") {
@@ -119,14 +111,12 @@ export const twilioRouter = router({
   sendOTP: publicProcedure
     .input(z.object({ phone: phoneSchema }))
     .mutation(async ({ input }) => {
-      if (!twilioClient || !VERIFY_SERVICE_SID) {
+      if (!twilioService.isVerifyConfigured) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Verify service not configured." });
       }
 
       try {
-        await twilioClient.verify.v2
-          .services(VERIFY_SERVICE_SID)
-          .verifications.create({ to: input.phone, channel: "sms" });
+        await twilioService.sendOTP(input.phone);
         return { success: true };
       } catch (err: any) {
         console.error("[Twilio Verify] sendOTP error:", err);
@@ -155,17 +145,15 @@ export const twilioRouter = router({
     .mutation(async ({ input }) => {
       const { leadId, phone, code, name, answers, source } = input;
 
-      if (!twilioClient || !VERIFY_SERVICE_SID) {
+      if (!twilioService.isVerifyConfigured) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Verify service not configured." });
       }
 
       // Check the OTP code with Twilio
       let verificationStatus: string;
       try {
-        const check = await twilioClient.verify.v2
-          .services(VERIFY_SERVICE_SID)
-          .verificationChecks.create({ to: phone, code });
-        verificationStatus = check.status;
+        const result = await twilioService.verifyOTP(phone, code);
+        verificationStatus = result.status;
       } catch (err: any) {
         console.error("[Twilio Verify] verifyOTP error:", err);
         throw new TRPCError({
@@ -217,7 +205,7 @@ export const twilioRouter = router({
       // Send team notification SMS
       try {
         const teamPhone = process.env.TWILIO_TEAM_PHONE ?? process.env.TWILIO_PHONE_NUMBER ?? "";
-        if (teamPhone) await sendSMS(teamPhone, smsBody);
+        if (teamPhone) await twilioService.sendSMS(teamPhone, smsBody);
       } catch (err) {
         console.error("[Twilio] Team SMS failed after verification:", err);
       }
@@ -231,7 +219,7 @@ export const twilioRouter = router({
           ``,
           `Reply STOP to opt out.`,
         ].join("\n");
-        await sendSMS(phone, confirmationBody);
+        await twilioService.sendSMS(phone, confirmationBody);
       } catch (err) {
         console.error("[Twilio] Confirmation SMS failed:", err);
       }
