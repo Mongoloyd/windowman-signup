@@ -415,3 +415,8 @@
 - [x] Set VITE_ENABLE_ANALYSIS_SIM env var
 - [x] Verify TypeScript compilation and test suite
 - [x] Confirm no OTP/Twilio/auth/session/analytics changes
+
+## WindowMan Logo Integration
+- [x] Upload WindowMan logo to CDN and get shareable URL
+- [x] Add logo to nav header component
+- [x] Verify TypeScript compilation and test suite

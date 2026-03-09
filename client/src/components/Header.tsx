@@ -19,12 +19,11 @@ export function Header() {
           aria-label="WindowMan — Home"
         >
           <img
-            src={ASSETS.windowmanCharacter}
-            alt=""
-            aria-hidden="true"
-            className="h-10 w-10 object-contain drop-shadow-md"
+            src="https://d2xsxph8kpxj0f.cloudfront.net/87108037/QkvsDE9FRrFndBys6dgpY4/windowman_18ae6674.png"
+            alt="WindowMan Logo"
+            className="h-12 w-12 object-contain drop-shadow-md"
           />
-          <span className="text-xl font-extrabold tracking-tight text-slate-900">
+          <span className="hidden sm:block text-xl font-extrabold tracking-tight text-slate-900">
             Window<span className="text-cyan-700 font-extrabold">Man</span>
           </span>
         </a>
