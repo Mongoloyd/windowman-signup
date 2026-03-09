@@ -405,3 +405,13 @@
 - [ ] Phase 1: READ-ONLY inventory of all Twilio usage, route contracts, phone normalization, side effects, protections
 - [x] Phase 2: Create server/comms-brain/twilio.ts portable Twilio provider layer (COMPLETE)
 - [x] Phase 3: Surgical route swap — replace direct Twilio SDK calls with twilioService in analysis.ts and twilio.ts routers (COMPLETE)
+- [x] Phase 4: Verification-only audit of Twilio refactor — zero-regression, rollback safety, behavioral parity (COMPLETE)
+
+## Analysis Theater Simulator (DEV-ONLY, Fixture-Based)
+- [x] Read QuoteAnalysisTheater and AnalysisReport prop contracts
+- [x] Create fixture data files (grade-a-clean, grade-c-mixed, grade-f-critical, low-confidence)
+- [x] Create AnalysisTheaterSimulator.tsx page component
+- [x] Register guarded debug route in App.tsx (DEV + VITE_ENABLE_ANALYSIS_SIM)
+- [x] Set VITE_ENABLE_ANALYSIS_SIM env var
+- [x] Verify TypeScript compilation and test suite
+- [x] Confirm no OTP/Twilio/auth/session/analytics changes

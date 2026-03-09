@@ -13,6 +13,12 @@ import Privacy from "./pages/Privacy";
 import { lazy, Suspense } from "react";
 const ScoringPlayground = lazy(() => import("./pages/debug/ScoringPlayground"));
 
+// DEV-ONLY: Analysis Theater Simulator — guarded by import.meta.env.DEV + VITE_ENABLE_ANALYSIS_SIM
+const AnalysisTheaterSimulator =
+  import.meta.env.DEV && import.meta.env.VITE_ENABLE_ANALYSIS_SIM === "true"
+    ? lazy(() => import("./pages/debug/AnalysisTheaterSimulator"))
+    : null;
+
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -22,6 +28,13 @@ function Router() {
       <Route path={"/analysis/preview"} component={AnalysisPreview} />
       <Route path={"/compare/:idA/:idB"} component={CompareReport} />
       <Route path={"/privacy"} component={Privacy} />
+      {AnalysisTheaterSimulator && (
+        <Route path={"/debug/analysis-theater"}>
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" /></div>}>
+            <AnalysisTheaterSimulator />
+          </Suspense>
+        </Route>
+      )}
       <Route path={"/debug/scoring"}>
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" /></div>}>
           <ScoringPlayground />
