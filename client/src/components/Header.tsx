@@ -23,6 +23,7 @@ export function Header() {
             alt=""
             aria-hidden="true"
             className="h-10 w-10 object-contain drop-shadow-md"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
           <span className="text-xl font-extrabold tracking-tight text-slate-900">
             Window<span className="text-cyan-700 font-extrabold">Man</span>
