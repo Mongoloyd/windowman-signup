@@ -15,6 +15,7 @@ export function Footer() {
               alt=""
               aria-hidden="true"
               className="h-8 w-8 object-contain drop-shadow-sm"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
             <span className="text-sm font-extrabold text-slate-900">
               Window<span className="text-cyan-700 font-extrabold">Man</span>
