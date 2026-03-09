@@ -1,6 +1,13 @@
 import React from "react";
 import type { ScoredResult } from "@shared/scoredTypes";
 import { EvidenceReveal } from "@/components/analysis/EvidenceReveal";
+import { Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /* ── Depth tokens (light mode) ── */
 const SURFACE =
@@ -51,12 +58,32 @@ function gradeTextColor(grade: string) {
 
 /* ── Pillar config ── */
 type PillarKey = "safety" | "scope" | "price" | "fine_print" | "warranty";
-const PILLAR_META: Record<PillarKey, { label: string; icon: string }> = {
-  safety: { label: "Safety & Licensing", icon: "🛡️" },
-  scope: { label: "Scope of Work", icon: "📋" },
-  price: { label: "Price Fairness", icon: "💰" },
-  fine_print: { label: "Fine Print", icon: "🔍" },
-  warranty: { label: "Warranty", icon: "📜" },
+const PILLAR_META: Record<PillarKey, { label: string; icon: string; tooltip: string }> = {
+  safety: {
+    label: "Safety & Licensing",
+    icon: "🛡️",
+    tooltip: "Verifies contractor has proper licenses, insurance, and follows safety regulations to protect you from liability."
+  },
+  scope: {
+    label: "Scope of Work",
+    icon: "📋",
+    tooltip: "Checks if the contract clearly specifies work details, materials, brands, model numbers, and responsibilities to prevent disputes."
+  },
+  price: {
+    label: "Price Fairness",
+    icon: "💰",
+    tooltip: "Analyzes pricing against market rates to identify potential overcharges or unreasonable payment terms."
+  },
+  fine_print: {
+    label: "Fine Print",
+    icon: "🔍",
+    tooltip: "Reviews contract clauses for hidden fees, cancellation penalties, arbitration requirements, and other traps."
+  },
+  warranty: {
+    label: "Warranty",
+    icon: "📜",
+    tooltip: "Evaluates warranty coverage, duration, exclusions, and transferability to ensure you're protected long-term."
+  },
 };
 
 function clamp(n: number, a = 0, b = 100) {
@@ -263,6 +290,16 @@ const AnalysisReport: React.FC<AnalysisReportProps> = ({ signals, scored, onBeat
                     <div className="flex items-center gap-2">
                       <span className="text-base">{meta.icon}</span>
                       <span className="text-sm font-black text-slate-900">{meta.label}</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="w-3.5 h-3.5 text-slate-400 cursor-help flex-shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="text-sm">{meta.tooltip}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <StatusPill status={status} label={status.toUpperCase()} />
                   </div>
