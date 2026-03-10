@@ -159,7 +159,9 @@ function LeadModal({ onClose, onSubmit }: LeadModalProps) {
     e.preventDefault();
     setIsSubmitting(true);
     // TODO: wire to real tRPC lead creation endpoint (e.g. analysis.createLeadQualification)
-    console.log("[ManusPowerTool] Lead captured:", { name, email, phone });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[ManusPowerTool] Lead captured:", { name, email, phone });
+    }
     setTimeout(() => {
       setIsSubmitting(false);
       onSubmit(name, email, phone);
