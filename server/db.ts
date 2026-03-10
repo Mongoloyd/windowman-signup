@@ -1,4 +1,4 @@
-import { eq, desc, and, lt, isNull } from "drizzle-orm";
+import { eq, desc, and, lt, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -181,6 +181,32 @@ export async function getAnalysisByTempSession(tempSessionId: string): Promise<A
     .select()
     .from(analyses)
     .where(and(eq(analyses.tempSessionId, tempSessionId), eq(analyses.status, "temp")))
+    .limit(1);
+  return result[0];
+}
+
+/**
+ * Broader variant of getAnalysisByTempSession, used ONLY by requestEmailVerification.
+ *
+ * Why this exists (intentionally broader):
+ * - The email request flow only needs proof that the upload/session exists — it does
+ *   not mutate the analysis status. It simply confirms the tempSessionId is valid
+ *   so a magic link can be sent.
+ * - getAnalysisByTempSession (status = "temp" only) is too strict here: if the user
+ *   submits their email before the background pipeline has promoted the analysis from
+ *   "processing" → "temp", requestEmailVerification would throw a premature NOT_FOUND.
+ * - verifyEmail remains strict (status = "temp" only) to avoid a write-write race:
+ *   attachAnalysisToLead sets status to "persisted_email_verified", but if the pipeline
+ *   hasn't finished yet it would later overwrite that status back to "temp" via
+ *   updateAnalysisPipelineResults(), silently losing the email-verified state.
+ */
+export async function getAnalysisByTempSessionForEmailFlow(tempSessionId: string): Promise<Analysis | undefined> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db
+    .select()
+    .from(analyses)
+    .where(and(eq(analyses.tempSessionId, tempSessionId), inArray(analyses.status, ["processing", "temp"])))
     .limit(1);
   return result[0];
 }

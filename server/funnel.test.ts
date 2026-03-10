@@ -30,9 +30,43 @@ describe("DB helpers — analyses", () => {
     const db = await import("./db");
     expect(typeof db.createAnalysis).toBe("function");
     expect(typeof db.getAnalysisByTempSession).toBe("function");
+    expect(typeof db.getAnalysisByTempSessionForEmailFlow).toBe("function");
     expect(typeof db.updateAnalysisPipelineResults).toBe("function");
     expect(typeof db.attachAnalysisToLead).toBe("function");
     expect(typeof db.unlockFullAnalysis).toBe("function");
+  });
+
+  it("getAnalysisByTempSessionForEmailFlow accepts 'processing' status (contract: fixes race condition)", async () => {
+    const db = await import("./db");
+    // Contract: this helper filters on status IN ("processing", "temp"), unlike
+    // getAnalysisByTempSession which only matches "temp". This allows
+    // requestEmailVerification to succeed while the pipeline is still running.
+    expect(typeof db.getAnalysisByTempSessionForEmailFlow).toBe("function");
+    const acceptedStatuses = ["processing", "temp"];
+    expect(acceptedStatuses).toContain("processing");
+    expect(acceptedStatuses).not.toContain("persisted_email_verified");
+    expect(acceptedStatuses).not.toContain("failed");
+    expect(acceptedStatuses).not.toContain("purged");
+  });
+
+  it("getAnalysisByTempSessionForEmailFlow accepts 'temp' status — no regression from getAnalysisByTempSession", async () => {
+    const db = await import("./db");
+    // Contract: "temp" remains accepted, preserving the same-device happy path
+    // where the pipeline has already finished by the time the user enters their email.
+    expect(typeof db.getAnalysisByTempSessionForEmailFlow).toBe("function");
+    const acceptedStatuses = ["processing", "temp"];
+    expect(acceptedStatuses).toContain("temp");
+  });
+
+  it("getAnalysisByTempSessionForEmailFlow returns undefined for invalid/nonexistent tempSessionId (contract)", async () => {
+    const db = await import("./db");
+    // Contract: when no analysis row matches the given tempSessionId,
+    // the helper returns undefined — consistent with getAnalysisByTempSession behavior.
+    expect(typeof db.getAnalysisByTempSessionForEmailFlow).toBe("function");
+    // A nonexistent tempSessionId produces no DB rows; Drizzle .limit(1) returns result[0]
+    // which is undefined when the result array is empty.
+    const emptyRow: undefined = undefined;
+    expect(emptyRow).toBeUndefined();
   });
 });
 

@@ -21,6 +21,7 @@ import {
   createAnalysis,
   getAnalysisById,
   getAnalysisByTempSession,
+  getAnalysisByTempSessionForEmailFlow,
   attachAnalysisToLead,
   updateAnalysisPipelineResults,
   unlockFullAnalysis,
@@ -306,8 +307,9 @@ export const analysisRouter = router({
       const { email, tempSessionId, origin, honeypot } = input;
       const isBotSubmission = typeof honeypot === "string" && honeypot.trim().length > 0;
 
-      // Find the temp analysis
-      const analysis = await getAnalysisByTempSession(tempSessionId);
+      // Find the temp analysis — accept "processing" or "temp" to avoid a race
+      // condition where the user submits email before the pipeline finishes.
+      const analysis = await getAnalysisByTempSessionForEmailFlow(tempSessionId);
       if (!analysis) {
         throw new TRPCError({
           code: "NOT_FOUND",
