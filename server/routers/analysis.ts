@@ -1030,4 +1030,77 @@ export const analysisRouter = router({
 
       return { analyses: pickerItems, leadId };
     }),
+
+  /**
+   * Demo lead capture: Captures lead data from ManusPowerTool demo flow.
+   * Minimal validation - just stores name, email, and optional phone for follow-up.
+   */
+  submitDemoLead: publicProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(100),
+        email: z.string().email(),
+        phone: z.string().max(20).optional(),
+        source: z.enum(["demo_scan"]).default("demo_scan"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { name, email, phone, source } = input;
+
+      // Check if lead already exists
+      let lead = await getLeadByEmail(email);
+
+      if (!lead) {
+        // Create new lead
+        const leadId = randomUUID();
+        await createLead({
+          id: leadId,
+          email,
+          emailVerified: false,
+          phoneVerified: false,
+          qualificationAnswers: {
+            name,
+            phone: phone || null,
+            source,
+            capturedAt: new Date().toISOString(),
+          },
+          qualificationCompletedAt: new Date(),
+        });
+        lead = await getLeadByEmail(email);
+      } else {
+        // Update existing lead with demo data if it doesn't have qualification answers
+        if (!lead.qualificationAnswers) {
+          await logLeadEvent({
+            id: randomUUID(),
+            leadId: lead.id,
+            eventName: "wm_demo_scan_viewed",
+            eventId: `${lead.id}_wm_demo_scan_viewed`,
+            source: "server",
+            payload: { name, email, phone: phone || null },
+          }).catch(() => {});
+        }
+      }
+
+      if (!lead) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create or find lead."
+        });
+      }
+
+      // Log demo scan event
+      await logLeadEvent({
+        id: randomUUID(),
+        leadId: lead.id,
+        eventName: "wm_demo_scan_started",
+        eventId: `${lead.id}_wm_demo_scan_started_${Date.now()}`,
+        source: "server",
+        payload: { name, email, phone: phone || null, source },
+      }).catch(() => {});
+
+      return {
+        leadId: lead.id,
+        success: true,
+      };
+    }),
 });
