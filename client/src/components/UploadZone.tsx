@@ -14,8 +14,9 @@ import {
   Upload, FileText, Shield, FileSearch, Scale, Award,
   CheckCircle2, AlertTriangle, Mail, Phone, Loader2,
   RefreshCw, ArrowLeft, Lock, Unlock, ChevronRight, AlertCircle,
-  CloudUpload, Camera, UserPlus, ArrowRight
+  CloudUpload, Camera, ScanLine, ArrowRight
 } from "lucide-react";
+import { ManusPowerTool } from "@/components/ManusPowerTool";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useInView } from "@/hooks/useInView";
@@ -166,6 +167,7 @@ function PillarRow({ pillar, status, isScanning }: {
 export function UploadZone() {
   const { ref, isInView } = useInView(0.1);
   const [state, setState] = useState<FunnelState>("idle");
+  const [showDemo, setShowDemo] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
@@ -407,24 +409,24 @@ export function UploadZone() {
               </div>
             </div>
 
-            {/* RIGHT: No Quote Path (2 cols) */}
+            {/* RIGHT: Demo Scan CTA (2 cols) */}
             <div className={`lg:col-span-2 transition-all duration-700 delay-400 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
               <div
                 className="rounded-3xl p-8 h-full flex flex-col justify-center bg-white/80 backdrop-blur-[24px] shadow-[0_25px_50px_-12px_rgba(44,62,80,0.10)] border border-cyan-500/15"
               >
-                <UserPlus className="w-10 h-10 text-blue-600 mb-6 opacity-70" />
-                <h3 className="text-xl font-bold text-slate-900 mb-3">Don't Have a Quote Yet?</h3>
+                <ScanLine className="w-10 h-10 text-cyan-600 mb-6 opacity-70" />
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Don't Have Your Quote?</h3>
                 <p className="text-slate-700 text-sm mb-6 leading-relaxed">
-                  No problem. Create your free account now and scan your quote whenever you're ready. We'll be here.
+                  See what our AI uncovers in a real contractor quote — a live demo scan of a Pompano Beach window job.
                 </p>
                 <button
-                  className="inline-flex items-center justify-center gap-2 w-full px-6 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-[0_10px_30px_-5px_rgba(59,130,246,0.35)] transition-all duration-300 hover:scale-[1.02] shadow-[0_10px_30px_-5px_rgba(59,130,246,0.30)]"
-                  onClick={() => document.getElementById("qualification-section")?.scrollIntoView({ behavior: "smooth" })}
+                  className="inline-flex items-center justify-center gap-2 w-full px-6 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_10px_30px_-5px_rgba(0,188,212,0.35)] transition-all duration-300 hover:scale-[1.02]"
+                  onClick={() => setShowDemo(true)}
                 >
-                  Create Account & Scan Later
+                  🛡️ View a Demo Scan
                   <ArrowRight className="w-4 h-4" />
                 </button>
-                <p className="text-xs text-slate-700 font-mono mt-4 text-center">Free forever • No credit card required</p>
+                <p className="text-xs text-slate-700 font-mono mt-4 text-center">Free • No credit card required</p>
               </div>
             </div>
           </div>
@@ -707,6 +709,21 @@ export function UploadZone() {
           </div>
         )}
       </div>
+
+      {/* ── Demo Scan Overlay ── */}
+      {showDemo && (
+        <ManusPowerTool
+          onClose={() => setShowDemo(false)}
+          onUploadClick={() => {
+            setShowDemo(false);
+            document.getElementById("upload-zone")?.scrollIntoView({ behavior: "smooth" });
+          }}
+          onConsultClick={() => {
+            setShowDemo(false);
+            document.getElementById("qualification-section")?.scrollIntoView({ behavior: "smooth" });
+          }}
+        />
+      )}
     </section>
   );
 }
