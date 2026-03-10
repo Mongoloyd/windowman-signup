@@ -573,7 +573,12 @@ function DemoReport({ name, onClose, onUploadClick, onConsultClick }: DemoReport
             </div>
             <div>
               <p className="font-semibold text-slate-900 text-sm">
-                {name ? `Hi ${name.split(" ")[0]} — h` : "H"}ere's what our AI found in this Pompano Beach quote
+                {(() => {
+                  const baseGreeting = "Here's what our AI found in this Pompano Beach quote";
+                  const trimmed = name?.trim();
+                  const firstName = trimmed ? trimmed.split(/\s+/)[0] : "";
+                  return firstName ? `Hi ${firstName}, ${baseGreeting}` : baseGreeting;
+                })()}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
                 Contractor: <span className="font-medium text-slate-700">{DEMO.contractor}</span> •{" "}
