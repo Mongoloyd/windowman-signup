@@ -9,8 +9,57 @@
  * - Purge scheduler initialization
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { randomUUID } from "crypto";
+import type { Analysis } from "../drizzle/schema";
+
+// ─── Drizzle mock (used ONLY by getAnalysisByTempSessionForEmailFlow tests) ───
+// mockRows is mutated before each DB-behavior test to control what the fake
+// Drizzle select chain resolves to, without needing a real database connection.
+// vi.mock is hoisted by Vitest so this intercepts the drizzle() call inside
+// getDb() in db.ts, which is the only reliable way to inject a fake DB for
+// functions whose internal getDb() call cannot be spied on from outside (ESM).
+let mockRows: Analysis[] = [];
+
+vi.mock("drizzle-orm/mysql2", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chain: any = {
+    from: () => chain,
+    where: () => chain,
+    limit: () => Promise.resolve(mockRows),
+  };
+  return {
+    drizzle: () => ({ select: () => chain }),
+  };
+});
+
+/** Build a minimal valid Analysis row; all nullable fields default to null. */
+function makeAnalysis(overrides: Pick<Analysis, "id" | "status"> & Partial<Analysis>): Analysis {
+  return {
+    leadId: null,
+    tempSessionId: null,
+    fileKey: null,
+    fileUrl: null,
+    fileHash: null,
+    fileName: null,
+    mimeType: null,
+    errorCode: null,
+    ocrTextKey: null,
+    ocrTextUrl: null,
+    ocrMeta: null,
+    proofOfRead: null,
+    previewJson: null,
+    fullJson: null,
+    rubricVersion: null,
+    expiresAt: null,
+    rawExtractionOutput: null,
+    rawAnalysisOutput: null,
+    fbSubmitApplicationSent: false,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+    ...overrides,
+  };
+}
 
 // ─── DB Helpers ───────────────────────────────────────────────────────────────
 
@@ -26,13 +75,62 @@ describe("DB helpers — leads", () => {
 });
 
 describe("DB helpers — analyses", () => {
+  let _savedDbUrl: string | undefined;
+
+  beforeEach(() => {
+    // A truthy DATABASE_URL causes getDb() to call drizzle() (mocked above),
+    // returning our fake chain. Without it, getDb() returns null and helpers throw.
+    _savedDbUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = "mysql://test-mock";
+    mockRows = [];
+  });
+
+  afterEach(() => {
+    if (_savedDbUrl === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = _savedDbUrl;
+    }
+  });
+
   it("analysis helpers are importable", async () => {
     const db = await import("./db");
     expect(typeof db.createAnalysis).toBe("function");
     expect(typeof db.getAnalysisByTempSession).toBe("function");
+    expect(typeof db.getAnalysisByTempSessionForEmailFlow).toBe("function");
     expect(typeof db.updateAnalysisPipelineResults).toBe("function");
     expect(typeof db.attachAnalysisToLead).toBe("function");
     expect(typeof db.unlockFullAnalysis).toBe("function");
+  });
+
+  it("getAnalysisByTempSessionForEmailFlow returns analysis when status is 'processing'", async () => {
+    // Verifies the helper finds an analysis still being processed — the core race fix.
+    // We mock getDb() via the drizzle-orm/mysql2 mock above; the fake chain's limit()
+    // reads mockRows at call time, so setting it before the call controls the result.
+    const { getAnalysisByTempSessionForEmailFlow } = await import("./db");
+    const fakeRow = makeAnalysis({ id: "analysis-proc-1", tempSessionId: "sess-proc", status: "processing" });
+    mockRows = [fakeRow];
+    const result = await getAnalysisByTempSessionForEmailFlow("sess-proc");
+    expect(result).toEqual(fakeRow);
+  });
+
+  it("getAnalysisByTempSessionForEmailFlow returns analysis when status is 'temp' — no regression", async () => {
+    // Verifies the helper still finds an analysis that the pipeline has already
+    // promoted to 'temp' (the same-device happy path — no regression).
+    const { getAnalysisByTempSessionForEmailFlow } = await import("./db");
+    const fakeRow = makeAnalysis({ id: "analysis-temp-2", tempSessionId: "sess-temp", status: "temp" });
+    mockRows = [fakeRow];
+    const result = await getAnalysisByTempSessionForEmailFlow("sess-temp");
+    expect(result).toEqual(fakeRow);
+  });
+
+  it("getAnalysisByTempSessionForEmailFlow returns undefined for invalid/nonexistent tempSessionId", async () => {
+    // Verifies the helper returns undefined (not throws) when the DB returns no rows.
+    // This matches the same contract as getAnalysisByTempSession on a miss.
+    const { getAnalysisByTempSessionForEmailFlow } = await import("./db");
+    mockRows = [];
+    const result = await getAnalysisByTempSessionForEmailFlow("nonexistent-session-id");
+    expect(result).toBeUndefined();
   });
 });
 
