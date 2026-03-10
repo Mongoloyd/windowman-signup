@@ -17,6 +17,8 @@ import {
   Phone, Mail, User, ArrowRight, TrendingDown, ChevronRight,
   Clock, Star, Loader2,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -148,6 +150,28 @@ function LeadModal({ onClose, onSubmit }: LeadModalProps) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // tRPC mutation for demo lead capture
+  const submitDemoLeadMutation = trpc.analysis.submitDemoLead.useMutation({
+    onSuccess: () => {
+      // Transition to scanning stage on success
+      onSubmit(name, email, phone);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to save lead information. Please try again.");
+      setIsSubmitting(false);
+    },
+  });
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (submitTimeoutRef.current) {
+        clearTimeout(submitTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,14 +182,14 @@ function LeadModal({ onClose, onSubmit }: LeadModalProps) {
   const handleStep2 = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // TODO: wire to real tRPC lead creation endpoint (e.g. analysis.createLeadQualification)
-    if (process.env.NODE_ENV === "development") {
-      console.log("[ManusPowerTool] Lead captured:", { name, email, phone });
-    }
-    setTimeout(() => {
-      setIsSubmitting(false);
-      onSubmit(name, email, phone);
-    }, 400);
+
+    // Submit lead data to backend
+    submitDemoLeadMutation.mutate({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+      source: "demo_scan",
+    });
   };
 
   return (
@@ -173,7 +197,7 @@ function LeadModal({ onClose, onSubmit }: LeadModalProps) {
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={isSubmitting ? undefined : onClose}
         aria-hidden="true"
       />
 
@@ -183,7 +207,8 @@ function LeadModal({ onClose, onSubmit }: LeadModalProps) {
         <div className="bg-gradient-to-r from-cyan-500 to-cyan-600 px-6 pt-6 pb-8">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+            disabled={isSubmitting}
+            className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -293,7 +318,8 @@ function LeadModal({ onClose, onSubmit }: LeadModalProps) {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="px-4 py-3 rounded-xl font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors text-sm"
+                  disabled={isSubmitting}
+                  className="px-4 py-3 rounded-xl font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Back
                 </button>
@@ -443,12 +469,19 @@ function ScoreReveal({ onComplete }: ScoreRevealProps) {
       if (step >= steps) {
         clearInterval(timer);
         setDisplayScore(target);
-        setTimeout(() => setIsRevealed(true), 300);
-        setTimeout(onComplete, 2800);
       }
     }, stepTime);
 
-    return () => clearInterval(timer);
+    // Schedule reveal and complete callbacks
+    const revealTimeout = setTimeout(() => setIsRevealed(true), duration + 300);
+    const completeTimeout = setTimeout(onComplete, duration + 2800);
+
+    // Clean up all timers
+    return () => {
+      clearInterval(timer);
+      clearTimeout(revealTimeout);
+      clearTimeout(completeTimeout);
+    };
   }, [onComplete]);
 
   const scoreColor = displayScore >= 70 ? "#34D399" : displayScore >= 50 ? "#FCD34D" : "#F87171";
